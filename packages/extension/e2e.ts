@@ -40,6 +40,10 @@ try {
   const overlayResult = String(await rpc('get_page_text', { tabId, mode: 'all' }));
   if (!overlayResult.includes('Overlay target clicked')) throw Error('Status pill blocked an underlying page button');
   console.log('Status pill click-through passed');
+  await rpc('computer', { tabId, action: 'left_click', ref: ref('Button under Stop') });
+  const stopResult = String(await rpc('get_page_text', { tabId, mode: 'all' }));
+  if (!stopResult.includes('Stop target clicked')) throw Error('Stop button intercepted an underlying page button');
+  console.log('Stop button click-through passed');
   await rpc('computer', { tabId, action: 'wait', seconds: .1 }); console.log('Action message passed');
   await rpc('computer', { tabId, action: 'mouse_move', coordinate: [100,100] }); console.log('Cursor move passed');
   await rpc('computer', { tabId, action: 'left_click', ref: ref('Name') });

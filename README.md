@@ -32,7 +32,7 @@ Load the same `packages/extension/dist` folder in each profile and pair each pro
 
 ## Permissions and local data
 
-The Chrome manifest requests broad host access because the extension needs to operate on sites you approve. The side panel starts with per-site permission controls; **Allow all websites** is an optional, persistent setting for ordinary HTTP and HTTPS actions. Pause and Stop controls are available in the panel, and the page overlay has a Stop button.
+The Chrome manifest requests broad host access because the extension needs to operate on sites you approve. The side panel starts with per-site permission controls; **Allow all websites** is an optional, persistent setting for ordinary HTTP and HTTPS actions. Pause and Stop controls are available in the panel. The page overlay has a Stop button that yields to site controls beneath it. Press **Ctrl+Alt+Shift+X** to stop browser control from the page at any time.
 
 The bridge binds to `127.0.0.1` and requires a generated bearer token for its local HTTP API. It stores the token, paired devices, upload roots, and download directory in `~/.codex-chrome/config.json`. Keep that file private. The browser stores its pairing and permission settings in extension storage. The bridge logs activity in `~/.codex-chrome/activity.jsonl` with common credential field names redacted; review logs before sharing them.
 

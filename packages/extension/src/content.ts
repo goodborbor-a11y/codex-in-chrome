@@ -79,6 +79,7 @@ function ensure(): void {
     statusPill = root.querySelector('.pill') as HTMLElement;
     stopButton = root.querySelector('.pill button') as HTMLButtonElement;
     ripple = root.querySelector('.ripple') as HTMLElement;
+    stopButton.title = 'Stop browser control (Ctrl+Alt+Shift+X)';
     stopButton.addEventListener('click', () => chrome.runtime.sendMessage({ type: 'stop' }));
     (document.documentElement || document.body)?.appendChild(host);
     if (cursorPosition) positionCursor(...cursorPosition);
@@ -99,14 +100,23 @@ function positionCursor(x: number, y: number): void {
 const observer = new MutationObserver(() => { if (attached && !hidden) ensure(); });
 observer.observe(document, { childList: true, subtree: true });
 document.addEventListener('pointermove', event => {
-  if (!statusPill || !attached || hidden) return;
+  if (!statusPill || !stopButton || !host || !attached || hidden) return;
   const box = statusPill.getBoundingClientRect();
-  const stop = stopButton?.getBoundingClientRect();
+  const stop = stopButton.getBoundingClientRect();
   const nearPill = event.clientX >= box.left - 20 && event.clientX <= box.right + 20 && event.clientY >= box.top - 20 && event.clientY <= box.bottom + 20;
-  const overStop = !!stop && event.clientX >= stop.left && event.clientX <= stop.right && event.clientY >= stop.top && event.clientY <= stop.bottom;
-  statusPill.style.opacity = nearPill && !overStop ? '.18' : '1';
+  const overStop = event.clientX >= stop.left && event.clientX <= stop.right && event.clientY >= stop.top && event.clientY <= stop.bottom;
+  const beneath = overStop ? document.elementsFromPoint(event.clientX, event.clientY).find(e => e !== host && !e.closest('[data-codex-overlay]')) : null;
+  const pageControl = !!beneath && (!!beneath.closest('a[href],button,input,select,textarea,iframe,summary,[onclick],[role="button"],[role="link"],[role="menuitem"],[role="tab"],[role="checkbox"],[role="switch"],[role="textbox"],[role="combobox"],[contenteditable="true"],[tabindex]:not([tabindex="-1"])') || getComputedStyle(beneath).cursor === 'pointer');
+  stopButton.style.pointerEvents = pageControl ? 'none' : 'auto';
+  statusPill.style.opacity = nearPill && (!overStop || pageControl) ? '.18' : '1';
 }, { capture: true, passive: true });
 document.addEventListener('pointerleave', () => { if (statusPill) statusPill.style.opacity = '1'; });
+document.addEventListener('keydown', event => {
+  if (!attached || hidden || event.code !== 'KeyX' || !event.ctrlKey || !event.altKey || !event.shiftKey) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  chrome.runtime.sendMessage({ type: 'stop' });
+}, { capture: true });
 function walk(rootNode: ParentNode, out: Element[], limit: number): void {
   for (const e of rootNode.querySelectorAll('*')) {
     if (out.length >= limit) return;
