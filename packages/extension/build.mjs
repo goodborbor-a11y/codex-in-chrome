@@ -1,0 +1,10 @@
+import { build } from 'esbuild';
+import { cpSync, mkdirSync } from 'node:fs';
+import process from 'node:process';
+const dir = 'packages/extension';
+const buildId = new Date().toISOString();
+mkdirSync(`${dir}/dist`, { recursive: true });
+for (const file of ['manifest.json', 'panel.html', 'offscreen.html']) cpSync(`${dir}/${file}`, `${dir}/dist/${file}`);
+cpSync(`${dir}/icons`, `${dir}/dist/icons`, { recursive: true });
+await build({ entryPoints: { worker: `${dir}/src/worker.ts`, content: `${dir}/src/content.ts`, panel: `${dir}/src/panel.ts`, offscreen: `${dir}/src/offscreen.ts` }, outdir: `${dir}/dist`, bundle: true, format: 'iife', target: 'chrome120', sourcemap: true, define: { __BUILD_ID__: JSON.stringify(buildId) } });
+process.stdout.write(`Extension build ${buildId}\n`);

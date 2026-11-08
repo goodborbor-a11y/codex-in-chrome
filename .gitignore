@@ -1,0 +1,15 @@
+node_modules/
+packages/extension/dist/
+*.tsbuildinfo
+*.log
+README.local.md
+.env
+.env.*
+.codex-chrome/
+config.json
+activity.jsonl
+*.pem
+*.key
+scripts/export-visible-chat.py
+scripts/run-document-form-demo.mjs
+scripts/run-roboform-demo.mjs

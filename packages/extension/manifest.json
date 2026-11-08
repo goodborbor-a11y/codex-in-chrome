@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "Codex in Chrome",
+  "version": "0.1.0",
+  "description": "Local, permission-gated Chrome control for Codex",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": ["debugger", "tabs", "tabGroups", "sessions", "storage", "sidePanel", "alarms", "scripting", "downloads", "clipboardRead", "clipboardWrite", "offscreen"],
+  "host_permissions": ["<all_urls>", "http://127.0.0.1/*"],
+  "background": { "service_worker": "worker.js" },
+  "content_scripts": [{ "matches": ["http://*/*", "https://*/*"], "js": ["content.js"], "run_at": "document_start", "all_frames": true }],
+  "side_panel": { "default_path": "panel.html" },
+  "action": {
+    "default_title": "Codex in Chrome",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "24": "icons/icon24.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png"
+    }
+  },
+  "minimum_chrome_version": "120"
+}

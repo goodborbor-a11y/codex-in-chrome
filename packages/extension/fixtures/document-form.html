@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Document Intake Demo</title>
+<style>
+  :root { font: 16px/1.5 system-ui, sans-serif; color: #e7edff; background: #10182a; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 30px 18px 80px; }
+  main { max-width: 980px; margin: auto; }
+  h1 { font-size: 2.2rem; margin: 0 0 4px; }
+  h2 { font-size: 1.25rem; margin-top: 0; }
+  p { margin: 0 0 22px; color: #b6c5e0; }
+  .card { background: #19243b; border: 1px solid #334462; border-radius: 16px; padding: 24px; margin: 20px 0; }
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  label { display: block; font-weight: 600; }
+  input { width: 100%; margin-top: 6px; padding: 11px 12px; border-radius: 9px; border: 1px solid #596b8e; background: #0e1729; color: white; font: inherit; }
+  input:focus { outline: 2px solid #73a0ff; }
+  input[type=file] { padding: 10px; }
+  button { border: 0; border-radius: 9px; background: #3978ff; color: white; font: inherit; font-weight: 700; padding: 14px 26px; cursor: pointer; }
+  #receipt { display: none; border-color: #52c99b; }
+  #receipt.show { display: block; }
+  #receipt p { color: #d9ffe9; }
+  @media (max-width: 680px) { .grid { grid-template-columns: 1fr; } }
+</style>
+<main>
+  <h1>Document Intake Demo</h1>
+  <p>Local browser test: fill 30 details, attach five images, then submit. Nothing is sent to a remote service.</p>
+  <form id="document-form">
+    <section class="card">
+      <h2>Document details</h2>
+      <div class="grid" id="fields"></div>
+    </section>
+    <section class="card">
+      <h2>Five images</h2>
+      <div class="grid" id="images"></div>
+    </section>
+    <button type="submit">Submit document</button>
+  </form>
+  <section id="receipt" class="card" role="status" aria-live="polite"></section>
+</main>
+<script>
+  const labels = [
+    'Document title', 'Document type', 'Author name', 'Organization', 'Department',
+    'Project name', 'Reference number', 'Version', 'Language', 'Country',
+    'City', 'Topic', 'Summary', 'Purpose', 'Audience',
+    'Category', 'Priority', 'Status', 'Reviewer', 'Approver',
+    'Contact name', 'Contact email', 'Contact phone', 'Source', 'Keywords',
+    'Page count', 'Format', 'Retention period', 'Notes', 'Submission label'
+  ];
+  const fields = document.querySelector('#fields');
+  labels.forEach((label, index) => {
+    const wrap = document.createElement('label');
+    wrap.textContent = `${index + 1}. ${label}`;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = `detail-${index + 1}`;
+    input.name = `detail-${index + 1}`;
+    input.required = true;
+    wrap.append(input);
+    fields.append(wrap);
+  });
+  const images = document.querySelector('#images');
+  for (let index = 1; index <= 5; index++) {
+    const wrap = document.createElement('label');
+    wrap.textContent = `Image ${index}`;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.id = `image-${index}`;
+    input.name = `image-${index}`;
+    input.required = true;
+    wrap.append(input);
+    images.append(wrap);
+  }
+  document.querySelector('#document-form').addEventListener('submit', event => {
+    event.preventDefault();
+    const completed = [...document.querySelectorAll('#fields input')].filter(input => input.value.trim()).length;
+    const files = [...document.querySelectorAll('#images input')].flatMap(input => [...input.files]);
+    const receipt = document.querySelector('#receipt');
+    receipt.replaceChildren();
+    const heading = document.createElement('h2');
+    heading.textContent = 'Submitted successfully';
+    const details = document.createElement('p');
+    details.textContent = `${completed} details completed. ${files.length} images attached: ${files.map(file => file.name).join(', ')}`;
+    receipt.append(heading, details);
+    receipt.classList.add('show');
+    receipt.scrollIntoView({ behavior: 'smooth' });
+  });
+</script>
+</html>
