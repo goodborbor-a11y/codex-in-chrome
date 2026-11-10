@@ -197,6 +197,8 @@ async function computer(tabId: number, input: Data): Promise<unknown> {
 }
 async function run(name: string, input: Data): Promise<unknown> {
   if (name==='extension_reload') { setTimeout(()=>chrome.runtime.reload(),500); return {reloading:true}; }
+  if (name==='browser_status') return {paused:state.paused,connected:state.connected,activeTabs:state.active.size};
+  if (name==='browser_resume') { if(input.confirmed!==true) throw Error('confirmation_required'); state.paused=false; entry('browser_resume'); return {paused:false}; }
   if (name==='sessions_list') return (await chrome.sessions.getRecentlyClosed({maxResults:25})).map(s=>({sessionId:s.window?.sessionId||s.tab?.sessionId,lastModified:s.lastModified,window:s.window?{tabs:s.window.tabs?.map(t=>({title:t.title,url:t.url}))}:undefined,tab:s.tab?{title:s.tab.title,url:s.tab.url}:undefined}));
   if (name==='sessions_restore') { if(input.confirmed!==true||typeof input.sessionId!=='string') throw Error('confirmation_required'); const restored=await chrome.sessions.restore(input.sessionId); return {sessionId:restored.window?.sessionId||restored.tab?.sessionId,windowId:restored.window?.id,tabId:restored.tab?.id}; }
   if (name==='permissions_status') return {allSites:state.allowAll};

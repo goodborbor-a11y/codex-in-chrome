@@ -12,6 +12,8 @@ const num = z.number();
 
 export const schemas = {
   extension_reload: plain(),
+  browser_status: plain(),
+  browser_resume: plain({ confirmed: bool }),
   sessions_list: plain(),
   sessions_restore: plain({ sessionId: ref, confirmed: bool }),
   permissions_status: plain(),

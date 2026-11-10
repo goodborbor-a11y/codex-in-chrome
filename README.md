@@ -24,6 +24,10 @@ corepack pnpm exec tsx packages/bridge/src/cli.ts doctor
 
 Replace `ABC123` with the code shown in your panel. `install` adds an MCP server entry with paths to this checkout in `~/.codex/config.toml`; restart Codex CLI afterward. Other MCP clients can launch `packages/mcp-server/src/index.ts` with `tsx` from this checkout.
 
+Claude Code can use the same stdio server. From this checkout in PowerShell, register a local MCP entry with `claude mcp add --scope local codex-in-chrome -- node "$((Get-Location).Path)/node_modules/tsx/dist/cli.mjs" "$((Get-Location).Path)/packages/mcp-server/src/index.ts"`, then check it with `claude mcp get codex-in-chrome`. The connection was smoke-tested with Claude Code 2.1.322; browser actions still need a paired Chrome profile and site approval.
+
+If browser control is paused, `corepack pnpm exec tsx packages/bridge/src/cli.ts status` shows the state and `corepack pnpm exec tsx packages/bridge/src/cli.ts resume` resumes it after you decide to continue. The MCP `browser_resume` tool requires `confirmed: true`. Ordinary clicks have a short deadline with a named timeout error; long typing actions get a longer deadline based on their length.
+
 The panel lets you approve a site before the agent acts there. To try the bundled local form demo, run `corepack pnpm exec tsx packages/bridge/src/cli.ts demo` and follow its site approval prompt. The demo opens and closes its own tab and saves a screenshot and GIF under your configured download directory. GIF recording requires `ffmpeg` on `PATH`.
 
 ## Multiple Chrome profiles and updates
@@ -52,6 +56,8 @@ corepack pnpm test:e2e
 ```
 
 The last command uses a paired Chrome profile and a local fixture. With multiple connected browsers, set `CODEX_CHROME_DEVICE_ID` to the desired device ID. It creates and closes only its test tab.
+
+GitHub Actions runs the type check, lint, unit tests, build, and MCP smoke test on pushes and pull requests. Browser end-to-end tests still require a paired, interactive Chrome profile and run locally.
 
 ## Current limits
 

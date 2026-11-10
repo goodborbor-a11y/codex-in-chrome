@@ -7,12 +7,14 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Bridge } from './server.js';
 import { loadConfig } from './config.js';
+import { rpcTimeoutMs } from './timeouts.js';
 
 const [, , command = 'help', ...args] = process.argv;
 const root = resolve(fileURLToPath(import.meta.url), '../../../..');
 const config = loadConfig();
 async function rpc(name: string, input: Record<string, unknown> = {}, path = '/rpc'): Promise<unknown> {
-  const response = await fetch(`http://127.0.0.1:${config.port}${path}`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${config.apiToken}` }, body: JSON.stringify(path === '/pair' ? input : { sessionId: 'cli', name, input }) });
+  const timeout = rpcTimeoutMs(name, input);
+  const response = await fetch(`http://127.0.0.1:${config.port}${path}`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${config.apiToken}` }, body: JSON.stringify(path === '/pair' ? input : { sessionId: 'cli', name, input }), signal: AbortSignal.timeout(timeout) }).catch((e: Error) => { if (e.name === 'TimeoutError') throw new Error(`browser_bridge_timed_out: ${name || 'pair'} after ${Math.ceil(timeout / 1000)}s`); throw e; });
   const body = await response.json() as { result?: unknown; error?: string };
   if (!response.ok) throw new Error(body.error || `HTTP ${response.status}`);
   return body.result;
@@ -24,6 +26,8 @@ async function main(): Promise<void> {
     return; }
   if (command === 'pair') { if (!args[0]) throw new Error('Usage: codex-chrome pair ABC123 [name]'); console.log(JSON.stringify(await rpc('', { code: args[0], name: args.slice(1).join(' ') || 'Chrome' }, '/pair'), null, 2)); return; }
   if (command === 'browsers') { console.log(JSON.stringify(await rpc('browsers_list'), null, 2)); return; }
+  if (command === 'status') { console.log(JSON.stringify(await rpc('browser_status'), null, 2)); return; }
+  if (command === 'resume') { console.log(JSON.stringify(await rpc('browser_resume', { confirmed: true }), null, 2)); return; }
   if (command === 'reload') { console.log(JSON.stringify(await rpc('extension_reload'), null, 2)); return; }
   if (command === 'tool') { if (!args[0]) throw new Error('Usage: codex-chrome tool <name> <json>'); console.log(JSON.stringify(await rpc(args[0], args[1] ? JSON.parse(args[1]) as Record<string, unknown> : {}), null, 2)); return; }
   if (command === 'doctor') {
@@ -82,6 +86,6 @@ async function main(): Promise<void> {
     } finally { if (tabId) await rpc('tabs_close', { tabId }).catch(() => {}); prompt.close(); server.closeAllConnections(); await new Promise<void>(done => server.close(() => done())); }
     return;
   }
-  console.log('codex-chrome: install | doctor | pair CODE [name] | browsers | reload | serve | tool NAME JSON | demo');
+  console.log('codex-chrome: install | doctor | pair CODE [name] | browsers | status | resume | reload | serve | tool NAME JSON | demo');
 }
 main().catch(e => { console.error((e as Error).message); process.exitCode = 1; });

@@ -6,6 +6,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { WebSocketServer, WebSocket } from 'ws';
 import { configDir, loadConfig, saveConfig, type Config } from './config.js';
+import { browserToolTimeoutMs } from './timeouts.js';
 
 type Packet = { id?: string; type: string; [key: string]: unknown };
 type Browser = { ws: WebSocket; deviceId: string; name: string; profile?: string; platform?: string; buildId?: string; lastSeen: number; busy: number };
@@ -138,9 +139,9 @@ export class Bridge {
     }
     if (this.recordings.has(recordKey) && !['screenshot','gif_record'].includes(name)) await this.frame(sessionId, recordKey);
     const requestId = crypto.randomUUID();
-    const duration = ['batch','computer'].includes(name) ? 25_000 : 10_000;
+    const duration = browserToolTimeoutMs(name, input);
     const result = await new Promise<unknown>((done, fail) => {
-      const timer = setTimeout(() => { this.pending.delete(requestId); b.busy--; fail(new Error('renderer_frozen')); }, duration);
+      const timer = setTimeout(() => { this.pending.delete(requestId); b.busy--; fail(new Error(`browser_action_timed_out: ${name === 'computer' ? String(input.action || name) : name} after ${Math.ceil(duration / 1000)}s`)); }, duration);
       this.pending.set(requestId, { resolve: done, reject: fail, timer, deviceId: id }); b.busy++;
       b.ws.send(JSON.stringify({ type: 'tool', id: requestId, name, input }));
     });

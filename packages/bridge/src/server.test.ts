@@ -1,9 +1,9 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WebSocket } from 'ws';
 import { Bridge } from './server.js';
 
 const bridges: Bridge[] = [];
-afterEach(async () => { for (const b of bridges.splice(0)) { for (const ws of b.wss.clients) ws.terminate(); await new Promise<void>(done => b.server.close(() => done())); b.wss.close(); } });
+afterEach(async () => { vi.useRealTimers(); for (const b of bridges.splice(0)) { for (const ws of b.wss.clients) ws.terminate(); await new Promise<void>(done => b.server.close(() => done())); b.wss.close(); } });
 describe('bridge pairing and routing', () => {
   it('pairs a browser, routes a tool, and fails after disconnect', async () => {
     const bridge = new Bridge(); bridges.push(bridge); const port = await bridge.listen();
@@ -29,5 +29,17 @@ describe('bridge pairing and routing', () => {
     bridge.browsers.set('a', { ws: {} as WebSocket, deviceId: 'a', name: 'A', lastSeen: Date.now(), busy: 0 });
     bridge.browsers.set('b', { ws: {} as WebSocket, deviceId: 'b', name: 'B', lastSeen: Date.now(), busy: 0 });
     await expect(bridge.tool('s2', 'tabs_context', {})).rejects.toThrow('Select a browser first');
+  });
+  it('returns a named timeout for a stalled click and clears the pending request', async () => {
+    const bridge = new Bridge(); bridges.push(bridge); await bridge.listen();
+    bridge.browsers.set('stalled', { ws: { readyState: WebSocket.OPEN, send: () => {} } as unknown as WebSocket, deviceId: 'stalled', name: 'Stalled', lastSeen: Date.now(), busy: 0 });
+    bridge.selected.set('s3', 'stalled');
+    vi.useFakeTimers();
+    const pending = bridge.tool('s3', 'computer', { action: 'left_click' });
+    const rejected = expect(pending).rejects.toThrow('browser_action_timed_out: left_click after 12s');
+    await vi.advanceTimersByTimeAsync(12_000);
+    await rejected;
+    expect(bridge.pending.size).toBe(0);
+    expect(bridge.browsers.get('stalled')?.busy).toBe(0);
   });
 });

@@ -14,5 +14,8 @@ describe('tool input schemas', () => {
   it('supports direct MCP arguments for browser discovery', () => {
     expect(schemas.browsers_list.safeParse({}).success).toBe(true);
     expect(schemas.browser_select.safeParse({ deviceId: 'browser-1' }).success).toBe(true);
+    expect(schemas.browser_status.safeParse({}).success).toBe(true);
+    expect(schemas.browser_resume.safeParse({}).success).toBe(false);
+    expect(schemas.browser_resume.safeParse({ confirmed: true }).success).toBe(true);
   });
 });
