@@ -40,6 +40,7 @@ async function connect(): Promise<void> {
 }
 async function incoming(msg: BridgePacket): Promise<void> {
   if (msg.type === 'ready') { const tabs=await chrome.tabs.query({}); const groups=await chrome.tabGroups.query({title:'Codex'}); for(const g of groups) if(g.color==='blue') state.groups.set(g.windowId,g.id); for(const t of tabs) if(t.id&&state.groups.get(t.windowId)===t.groupId) await attached(t.id).catch(()=>{}); return; }
+  if (msg.type === 'pair_waiting' || msg.type === 'pair_required') { if(state.device) { state.device=null; state.paired=false; await save(); } return; }
   if (msg.type === 'select_prompt') { state.selectSession = String(msg.sessionId || ''); await chrome.sidePanel.open({ windowId: (await chrome.windows.getCurrent()).id! }).catch(()=>{}); return; }
   if (msg.type === 'selected') { state.selectSession = ''; return; }
   if (msg.type === 'paired') { state.device = { deviceId: String(msg.deviceId), token: String(msg.token), name: String(msg.name) }; state.paired = true; await save(); state.ws?.send(JSON.stringify({ type: 'hello', ...state.device, platform: navigator.platform, buildId: __BUILD_ID__ })); return; }

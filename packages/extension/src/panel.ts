@@ -3,8 +3,8 @@ const $ = (id: string) => document.getElementById(id)!;
 async function call(type: string, extra: Record<string, unknown> = {}): Promise<unknown> { return chrome.runtime.sendMessage({ type, ...extra }); }
 async function refresh(): Promise<void> {
   const s = await call('panel_state') as State;
-  $('state').textContent = s.paired ? (s.connected ? 'Connected' : 'Bridge offline') : 'Pair this browser';
-  $('code').textContent = s.paired ? '' : s.code;
+  $('state').textContent = !s.connected ? 'Bridge offline' : s.paired ? 'Connected' : 'Pair this browser';
+  $('code').textContent = s.connected && !s.paired ? s.code : '';
   $('device').textContent = s.name ? `${s.name} · ${s.deviceId}` : 'Run codex-chrome pair CODE';
   $('selectPrompt').hidden = !s.selectSession;
   $('site').textContent = `${s.origin || 'No web page selected'} ${s.allowed ? '✓ allowed' : '· permission needed'}`;

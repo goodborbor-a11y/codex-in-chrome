@@ -34,6 +34,8 @@ The panel lets you approve a site before the agent acts there. To try the bundle
 
 Load the same `packages/extension/dist` folder in each profile and pair each profile once. A rebuild updates that shared folder. While the bridge is running, it detects the change and asks connected profiles to reload the extension after writes settle. Offline profiles pick up the rebuilt files when Chrome next loads the extension. Each profile keeps its own site permissions.
 
+On Windows, run `./scripts/install-startup.ps1` once to start the local bridge when you sign in. The task runs hidden, retries after failure, and does not create a second bridge if one is already running. `./scripts/remove-startup.ps1` removes the task. Pairing is stored in Chrome extension storage and in `~/.codex-chrome/config.json`; it normally survives a restart. If a profile shows a new code while the bridge is online, that profile's extension storage was reset or a different Chrome profile is open, so pair it again.
+
 ## Permissions and local data
 
 The Chrome manifest requests broad host access because the extension needs to operate on sites you approve. The side panel starts with per-site permission controls; **Allow all websites** is an optional, persistent setting for ordinary HTTP and HTTPS actions. Pause and Stop controls are available in the panel. The page overlay has a Stop button that yields to site controls beneath it. Press **Ctrl+Alt+Shift+X** to stop browser control from the page at any time.
