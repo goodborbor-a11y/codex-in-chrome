@@ -2,6 +2,8 @@
 
 These steps work from a fresh Git checkout. Run the bridge and agent on the **same computer** as the browser. Chrome and Firefox use the same local bridge, separate add-ons, and one `saint-in-browsers` MCP entry. Agent tabs appear in a **Saint** tab group in each browser.
 
+Setting up a second Windows PC? Use the [download and install guide](SECOND_PC.md).
+
 ## 1. Get the code
 
 Install [Git](https://git-scm.com/downloads) and [Node.js](https://nodejs.org/en/download) (Node 20 or newer). Then, in a terminal:
@@ -25,7 +27,7 @@ In a terminal from the checkout, run `corepack pnpm bridge` and keep it running.
 
 **Firefox:** Open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on**, and select `packages/firefox/manifest.json` from this checkout. Open the **Saint in Firefox (Local)** toolbar popup and copy its six-character code. Turn on **Allow tab actions on websites**. Firefox removes this unsigned temporary add-on on restart; load it again to use it. A permanent install needs Mozilla signing.
 
-When Firefox add-on files change, click **Reload** on its card in `about:debugging`. Controlled tabs show a cyan/magenta page frame, animated cursor, and a Stop button. Stop pauses browser actions; use **Resume** in the toolbar popup to continue.
+The bridge watches installed add-on source files and reloads the connected browser add-on after code changes. If Firefox does not reload, click **Reload** on its card in `about:debugging`. Controlled tabs show a cyan/magenta page frame, animated cursor, and a Stop button. Stop pauses browser actions; use **Resume** in the toolbar popup to continue.
 
 In a second terminal in the checkout, replace `ABC123` with the popup code and run:
 

@@ -22,7 +22,9 @@ async function rpc(name: string, input: Record<string, unknown> = {}, path = '/r
 async function main(): Promise<void> {
   if (command === 'serve') { try { const response=await fetch(`http://127.0.0.1:${config.port}/health`,{signal:AbortSignal.timeout(800)}); if(response.ok&&(await response.json() as {ok?:boolean}).ok){console.log('Saint in Browsers bridge already running');return;} } catch { /* start the bridge */ }
     const bridge = new Bridge(); const port = await bridge.listen(); console.log(`Saint in Browsers bridge listening on 127.0.0.1:${port}`); setInterval(() => { for (const b of bridge.browsers.values()) { if (Date.now() - b.lastSeen > 20_000) b.ws.close(); else b.ws.send(JSON.stringify({ type: 'heartbeat' })); } }, 5_000);
-    const dist=join(root,'packages','extension','dist'); if(existsSync(dist)) { let timer:NodeJS.Timeout|undefined; watch(dist,{recursive:true},()=>{ if(timer) clearTimeout(timer); timer=setTimeout(()=>{ for(const b of bridge.browsers.values()) { const session=`watch-${b.deviceId}`; bridge.selected.set(session,b.deviceId); void bridge.tool(session,'extension_reload',{}).catch(()=>{}); } },5000); }); }
+    const watchAddOn=(directory:string,firefox:boolean)=>{if(!existsSync(directory))return;let timer:NodeJS.Timeout|undefined;watch(directory,{recursive:true},(_,filename)=>{if(filename&&!/\.(js|json|html|css)$/i.test(String(filename)))return;if(timer)clearTimeout(timer);timer=setTimeout(()=>{for(const b of bridge.browsers.values()){if((b.platform==='Firefox')!==firefox)continue;const session=`watch-${b.deviceId}`;bridge.selected.set(session,b.deviceId);void bridge.tool(session,'extension_reload',{}).catch(()=>{});}},5000);});};
+    watchAddOn(join(root,'packages','extension','dist'),false);
+    watchAddOn(join(root,'packages','firefox'),true);
     return; }
   if (command === 'pair') { if (!args[0]) throw new Error('Usage: saint-in-browsers pair ABC123 [name]'); console.log(JSON.stringify(await rpc('', { code: args[0], name: args.slice(1).join(' ') || 'Chrome' }, '/pair'), null, 2)); return; }
   if (command === 'browsers') { console.log(JSON.stringify(await rpc('browsers_list'), null, 2)); return; }

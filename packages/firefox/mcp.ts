@@ -8,10 +8,11 @@ const sessionId = crypto.randomUUID();
 const server = new McpServer({ name: 'codex-in-firefox', version: '0.1.0' });
 let selected = false;
 const names = [
-  'browsers_list', 'browser_select', 'browser_status', 'browser_resume', 'permissions_status',
+  'browsers_list', 'browser_select', 'browser_status', 'browser_resume', 'extension_reload', 'permissions_status',
   'tabs_list_all', 'tabs_context', 'tabs_create', 'tabs_close', 'tabs_activate',
   'navigate', 'screenshot', 'read_page', 'get_page_text', 'get_html', 'find', 'computer',
-  'insert_text', 'clear_field', 'form_input'
+  'insert_text', 'clear_field', 'form_input', 'get_element', 'wait_for', 'focus', 'blur',
+  'select_option', 'check', 'uncheck', 'scroll_into_view', 'scroll_page'
 ] as const;
 for (const name of names) {
   server.tool(name, `Control Firefox tabs through the local bridge. Select the Firefox browser with browser_select when multiple browsers are connected. Website actions need Allow tab actions in the Firefox add-on popup.`, schemas[name].shape, async (input: Record<string, unknown>) => {

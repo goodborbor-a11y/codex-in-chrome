@@ -2,7 +2,7 @@
 
 **Saint in Browsers** is an unofficial, experimental browser extension, local bridge, and MCP server that lets terminal agents use Chrome or Firefox tabs. Any local agent with stdio MCP support can connect, including Codex, Claude Code, and Hermes Agent. This community project is not affiliated with OpenAI, Anthropic, Mozilla, or Google. It is not production ready.
 
-**Start here:** [Step-by-step setup for Chrome, Firefox, Codex, Claude Code, Hermes, and other MCP agents](docs/CONNECT.md).
+**Start here:** [Install on a second PC](docs/SECOND_PC.md) · [Full setup guide](docs/CONNECT.md) · [Copy-paste agent prompt](docs/PROMPT.md). [Download the latest source ZIP](https://github.com/goodborbor-a11y/codex-in-chrome/archive/refs/heads/main.zip).
 
 Once connected, copy the [short prompt for any MCP agent](docs/PROMPT.md).
 

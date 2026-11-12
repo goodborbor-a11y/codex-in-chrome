@@ -1,4 +1,4 @@
-/* global browser, crypto, WebSocket, setTimeout, URL, fetch, document, devicePixelRatio, KeyboardEvent, HTMLInputElement, HTMLTextAreaElement, HTMLSelectElement, Event, InputEvent */
+/* global browser, crypto, WebSocket, setTimeout, URL, fetch, document, devicePixelRatio, HTMLInputElement, HTMLTextAreaElement, HTMLSelectElement, Event, InputEvent, CSS */
 const S={ws:null,port:17345,device:null,code:'',connected:false,allow:false,paused:false,owned:new Set(),controlled:new Set(),selected:'',retry:null};
 const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 S.code=Array.from(crypto.getRandomValues(new Uint8Array(6)),x=>alphabet[x%alphabet.length]).join('');
@@ -28,6 +28,13 @@ function domAction(input){
   const at=input.coordinate;
   let e=input.selector?document.querySelector(input.selector):at?document.elementFromPoint(at[0]/devicePixelRatio,at[1]/devicePixelRatio):document.activeElement;
   if(!e)throw Error('element_not_found');
+  if(input.action==='inspect'){
+    const r=e.getBoundingClientRect(),field=[e.getAttribute('type'),e.getAttribute('name'),e.id,e.getAttribute('autocomplete')].join(' '),isSecret=/password|card.?number|\bcc-?\b|\bcvv\b|\bcvc\b|\bssn\b/i.test(field);
+    return{tag:e.tagName.toLowerCase(),type:e.getAttribute('type'),role:e.getAttribute('role'),name:e.getAttribute('aria-label')||e.getAttribute('name')||'',text:(e.innerText||'').slice(0,300),value:isSecret?'[redacted]':'value'in e?e.value:undefined,focused:document.activeElement===e,disabled:!!e.disabled,checked:e.checked,selector:e.id?'#'+CSS.escape(e.id):input.selector||null,box:{x:r.x,y:r.y,w:r.width,h:r.height}};
+  }
+  if(input.action==='focus'){e.focus();return{ok:true,focused:document.activeElement===e}}
+  if(input.action==='blur'){e.blur();return{ok:true,focused:document.activeElement===e}}
+  if(input.action==='scroll_into_view'){e.scrollIntoView({block:'center',inline:'nearest'});return{ok:true}}
   if(input.action==='left_click'){
     e.click();
     const focus=e.matches('input,textarea,select,[contenteditable]')?e:e.control||null;
@@ -35,7 +42,21 @@ function domAction(input){
     return{ok:true,action:'left_click',tag:e.tagName,focused:document.activeElement?.tagName};
   }
   if(input.action==='scroll'){e.scrollBy?.(0,Number(input.amount||400));return{ok:true,action:'scroll',tag:e.tagName}}
-  if(input.action==='key'){e.dispatchEvent(new KeyboardEvent('keydown',{key:String(input.text||''),bubbles:true}));return{ok:true,action:'key',tag:e.tagName}}
+  if(input.action==='key'){
+    const key=String(input.text||''),lower=key.toLowerCase();
+    if((lower==='ctrl+a'||lower==='control+a')&&typeof e.select==='function'){e.select();return{ok:true,key,selected:true}}
+    if((lower==='backspace'||lower==='delete')&&typeof e.selectionStart==='number'){
+      const start=e.selectionStart,end=e.selectionEnd,from=start===end&&lower==='backspace'?Math.max(0,start-1):start,to=start===end&&lower==='delete'?Math.min(e.value.length,end+1):end;
+      e.value=e.value.slice(0,from)+e.value.slice(to);e.setSelectionRange(from,from);
+      e.dispatchEvent(new InputEvent('input',{bubbles:true,inputType:lower==='backspace'?'deleteContentBackward':'deleteContentForward'}));
+      return{ok:true,key,tag:e.tagName};
+    }
+    if(lower==='tab'){
+      const nodes=[...document.querySelectorAll('a[href],button,input,select,textarea,[tabindex]:not([tabindex="-1"])')].filter(n=>!n.disabled&&n.getBoundingClientRect().width>0);
+      nodes[(nodes.indexOf(e)+1)%nodes.length]?.focus();return{ok:true,key,focused:document.activeElement?.tagName};
+    }
+    throw Error('firefox_key_not_supported: '+key);
+  }
   if(input.action!=='type'&&input.action!=='replace'&&input.action!=='clear')throw Error('Firefox action not yet supported: '+input.action);
   if(e.matches('input,textarea,select')&&(e.disabled||e.readOnly))throw Error('not_editable');
   const kind=(e.getAttribute('type')||'').toLowerCase();
@@ -83,7 +104,7 @@ async function computer(t,input){
   if(input.action==='left_click')await overlay(t,'overlay_click',{x:point.x,y:point.y});
   return edit(t,input);
 }
-async function run(name,input){if(name==='browser_status')return{connected:S.connected,paired:!!S.device,paused:S.paused};if(name==='browser_resume'){if(input.confirmed!==true)throw Error('confirmation_required');S.paused=false;return{paused:false}}if(S.paused)throw Error('browser_paused');
+async function run(name,input){if(name==='browser_status')return{connected:S.connected,paired:!!S.device,paused:S.paused};if(name==='browser_resume'){if(input.confirmed!==true)throw Error('confirmation_required');S.paused=false;return{paused:false}}if(name==='extension_reload'){setTimeout(()=>browser.runtime.reload(),500);return{reloading:true}}if(S.paused)throw Error('browser_paused');
 if(name==='computer')return computer(await tab(input),input);
 if(name==='permissions_status')return{allSites:S.allow};
 if(name==='permissions_set'){if(input.confirmed!==true)throw Error('confirmation_required');S.allow=!!input.allSites;await browser.storage.local.set({allow:S.allow});return{allSites:S.allow}}
@@ -93,9 +114,35 @@ if(name==='tabs_close'){let t=await tab(input);if(!S.owned.has(t.id))throw Error
 if(name==='tabs_activate'){let t=await tab(input);const inSaint=(await saintGroups()).some(g=>g.id===t.groupId);if(!S.owned.has(t.id)&&!inSaint&&input.confirmed!==true)throw Error('confirmation_required_for_user_tab');const groupId=await group(t.id);await browser.tabs.update(t.id,{active:true});await browser.windows.update(t.windowId,{focused:true});await overlay(t);return{tabId:t.id,groupId}}
 if(name==='navigate'){let t=await tab(input);let u=input.url;if(['back','forward','reload'].includes(u)){await browser.tabs[u==='back'?'goBack':u==='forward'?'goForward':'reload'](t.id)}else{if(!S.allow||!site(u))throw Error('website_permission_needed');await browser.tabs.update(t.id,{url:u})}let next=await tab(input);for(let i=0;i<100;i++){next=await tab(input);if(next.status==='complete'&&(next.url===u||next.url?.startsWith(u)||next.url!==t.url&&site(next.url)))break;await sleep(100)}if(!site(next.url))throw Error('navigation_not_ready: '+next.url);await overlay(next);return{tabId:t.id,url:next.url}}
 if(name==='screenshot'){let t=await tab(input);permitted(t);if(!t.active)throw Error('activate_tab_before_screenshot');await overlay(t,'overlay_attach',{action:'capturing'});let data=await browser.tabs.captureVisibleTab(t.windowId,{format:input.format||'png',quality:input.quality});let [viewport]=await browser.tabs.executeScript(t.id,{code:'({cssWidth:innerWidth,cssHeight:innerHeight,dpr:devicePixelRatio})'});return{image:data.split(',')[1],mimeType:`image/${input.format||'png'}`,tabId:t.id,viewport,coordinateNote:'computer.coordinate uses screenshot pixels'}}
-if(name==='get_page_text'||name==='read_page'){let t=await tab(input);let content=await script(t,'document.body?.innerText?.slice(0,50000)||""');return name==='read_page'?{tabId:t.id,url:t.url,text:content}:content}
+if(name==='get_page_text'||name==='read_page'){
+  const t=await tab(input);
+  if(name==='read_page'&&input.filter==='interactive'){
+    const max=Math.min(5000,Number(input.maxNodes||500));
+    const nodes=await script(t,`[...document.querySelectorAll('a[href],button,input,textarea,select,[contenteditable],[role],[tabindex]')].slice(0,${max}).map(e=>{const r=e.getBoundingClientRect();return{tag:e.tagName.toLowerCase(),role:e.getAttribute('role'),name:e.getAttribute('aria-label')||e.getAttribute('name')||e.innerText?.slice(0,100)||'',type:e.getAttribute('type'),selector:e.id?'#'+CSS.escape(e.id):null,box:{x:r.x,y:r.y,w:r.width,h:r.height},focused:document.activeElement===e}})`);
+    return{tabId:t.id,url:t.url,nodes};
+  }
+  const content=await script(t,'document.body?.innerText?.slice(0,50000)||""');
+  return name==='read_page'?{tabId:t.id,url:t.url,text:content}:content;
+}
 if(name==='get_html'){let t=await tab(input);let sel=JSON.stringify(input.selector||'html');return script(t,`document.querySelector(${sel})?.${input.outer===false?'innerHTML':'outerHTML'}||null`)}
 if(name==='find'){let t=await tab(input);let q=JSON.stringify(String(input.query).toLowerCase());return script(t,`[...document.querySelectorAll('a,button,input,textarea,select,[role]')].filter(e=>(e.innerText||e.getAttribute('aria-label')||e.value||'').toLowerCase().includes(${q})).slice(0,30).map(e=>({tag:e.tagName,text:(e.innerText||e.value||'').slice(0,150),selector:e.id?'#'+CSS.escape(e.id):e.tagName.toLowerCase()}))`)}
+if(['get_element','focus','blur','scroll_into_view'].includes(name))return edit(await tab(input),{action:name==='get_element'?'inspect':name,selector:input.selector||input.ref});
+if(['select_option','check','uncheck'].includes(name))return edit(await tab(input),{action:'replace',selector:input.selector||input.ref,text:name==='check'?'true':name==='uncheck'?'false':input.value});
+if(name==='wait_for'){
+  const deadline=Date.now()+Math.min(30000,Number(input.timeoutMs||10000));
+  while(Date.now()<deadline){
+    const current=await tab(input);
+    if(input.url_pattern&&current.url?.includes(input.url_pattern))return{ok:true,url:current.url};
+    if(input.selector||input.ref){const found=await script(current,`!!document.querySelector(${JSON.stringify(input.selector||input.ref)})`).catch(()=>false);if(found)return{ok:true,selector:input.selector||input.ref}}
+    if(input.text){const found=await script(current,`document.body?.innerText?.includes(${JSON.stringify(input.text)})||false`).catch(()=>false);if(found)return{ok:true,text:input.text}}
+    await sleep(250);
+  }
+  throw Error('wait_for_timed_out');
+}
+if(name==='scroll_page'){
+  const t=await tab(input),to=input.to,percent=Math.max(0,Math.min(100,Number(input.percent||0)));
+  return script(t,`(()=>{const y=${JSON.stringify(to)}==='top'?0:${JSON.stringify(to)}==='bottom'?document.documentElement.scrollHeight:document.documentElement.scrollHeight*${percent}/100;window.scrollTo(0,y);return{ok:true,y:window.scrollY}})()`);
+}
 if(name==='insert_text')return edit(await tab(input),{action:'type',text:input.text});
 if(name==='clear_field')return edit(await tab(input),{action:'clear',selector:input.selector||input.ref,text:''});
 if(name==='form_input'){

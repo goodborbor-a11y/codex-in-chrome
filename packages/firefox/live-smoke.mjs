@@ -19,7 +19,9 @@ let tabId;
 const server = createServer((_, response) => {
   response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
   response.end(`<!doctype html><title>Saint Firefox input test</title><h1>Saint Firefox input test</h1>
-    <input id="first"><textarea id="second"></textarea><output id="result"></output>
+    <input id="first"><textarea id="second"></textarea>
+    <select id="category"><option value="a">A</option><option value="b">B</option></select>
+    <input id="agree" type="checkbox"><output id="result"></output>
     <script>
       const first = document.querySelector('#first'), second = document.querySelector('#second');
       const update = () => document.querySelector('#result').textContent = first.value + '|' + second.value;
@@ -47,7 +49,21 @@ try {
   if (!(await tool('get_page_text', { tabId })).includes('gamma|beta')) throw Error('Firefox click, clear_field, or insert_text failed');
   await tool('computer', { tabId, action: 'type', selector: '#second', text: '!' });
   if (!(await tool('get_page_text', { tabId })).includes('gamma|beta!')) throw Error('Firefox computer type failed');
-  console.log('Firefox LIVE PASS: navigation, reading, screenshot, form_input, click, clear_field, insert_text, type');
+  const interactive = await tool('read_page', { tabId, filter: 'interactive' });
+  if (!interactive.nodes?.some(node => node.selector === '#first')) throw Error('Firefox interactive page reading failed');
+  await tool('wait_for', { tabId, selector: '#category' });
+  await tool('select_option', { tabId, selector: '#category', value: 'b' });
+  await tool('check', { tabId, selector: '#agree' });
+  if ((await tool('get_element', { tabId, selector: '#category' })).value !== 'b') throw Error('Firefox select_option failed');
+  if ((await tool('get_element', { tabId, selector: '#agree' })).checked !== true) throw Error('Firefox check failed');
+  await tool('focus', { tabId, selector: '#first' });
+  await tool('computer', { tabId, action: 'key', text: 'Ctrl+A' });
+  await tool('computer', { tabId, action: 'key', text: 'Backspace' });
+  await tool('insert_text', { tabId, text: 'omega' });
+  if (!(await tool('get_page_text', { tabId })).includes('omega|beta!')) throw Error('Firefox focus or keyboard editing failed');
+  await tool('scroll_into_view', { tabId, selector: '#second' });
+  await tool('scroll_page', { tabId, to: 'top' });
+  console.log('Firefox LIVE PASS: navigation, screenshot, form, typing, keyboard editing, element reading, wait, select, check, scroll');
 } finally {
   if (tabId) await tool('tabs_close', { tabId }).catch(e => console.error('Could not close test tab:', e.message));
   if (server.listening) server.close();
