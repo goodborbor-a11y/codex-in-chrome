@@ -31,7 +31,9 @@ In that folder run `corepack pnpm bridge` and leave the terminal open. For autom
 | Browser | Install the Saint add-on | Allow actions |
 | --- | --- | --- |
 | Chrome | Open `chrome://extensions` → enable **Developer mode** → **Load unpacked** → select `packages/extension/dist` | In the Saint side panel, allow the websites you want to control |
-| Firefox | Open `about:debugging#/runtime/this-firefox` → **Load Temporary Add-on** → select `packages/firefox/manifest.json` | In the Saint toolbar popup, turn on **Allow tab actions on websites** |
+| Firefox | Close Firefox, then run `./scripts/start-firefox-advanced.ps1` to open your default profile and install Saint | In the Saint toolbar popup, turn on **Allow tab actions on websites** |
+
+For Firefox, close the browser first, then run `./scripts/start-firefox-advanced.ps1` from the checkout. It opens your default profile and installs Saint automatically. The manual basic-mode option is `about:debugging#/runtime/this-firefox` → **Load Temporary Add-on** → `packages/firefox/manifest.json`.
 
 Open each add-on's panel or popup and copy its six-character code. In a **second PowerShell window** in the checkout, pair each browser you installed:
 
@@ -43,7 +45,7 @@ corepack pnpm exec tsx packages/bridge/src/cli.ts browsers
 
 Replace each sample code with that browser's actual code. Run only the pairing line for browsers you installed. The final command should list each connected browser.
 
-Firefox's current add-on is unsigned and temporary: [Firefox removes it when Firefox restarts](https://extensionworkshop.com/documentation/develop/temporary-installation-in-firefox/). Load the same `manifest.json` again after a restart. Chrome's unpacked add-on remains loaded. Firefox has fewer tools than Chrome; the [Firefox tool list](../packages/firefox/README.md) names the current support.
+Firefox's add-on is unsigned and temporary. Run `./scripts/start-firefox-advanced.ps1` whenever you start Firefox; it reopens the same default profile with trusted input enabled and reinstalls Saint automatically. Chrome's unpacked add-on remains loaded. Firefox has fewer tools than Chrome; see its [capability list](../packages/firefox/README.md).
 
 ## 4. Connect an agent
 

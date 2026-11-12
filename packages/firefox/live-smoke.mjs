@@ -35,13 +35,16 @@ const server = createServer((request, response) => {
     <script>
       const first = document.querySelector('#first'), second = document.querySelector('#second');
       const update = () => document.querySelector('#result').textContent = first.value + '|' + second.value;
-      first.addEventListener('input', update); second.addEventListener('input', update); update();
+      first.addEventListener('input', e => { first.dataset.trusted=String(e.isTrusted); update(); });
+      second.addEventListener('input', e => { second.dataset.trusted=String(e.isTrusted); update(); }); update();
       document.querySelector('#upload').addEventListener('change', async event => {
         const file=event.target.files[0];
         document.querySelector('#uploaded').textContent=file.name+':'+await file.text();
       });
       document.querySelector('#action').addEventListener('mouseover',()=>document.querySelector('#action-result').textContent='hovered');
       document.querySelector('#action').addEventListener('click',()=>document.querySelector('#action-result').textContent='clicked');
+      document.querySelector('#action').addEventListener('dblclick',()=>document.querySelector('#action-result').textContent='dblclicked');
+      document.querySelector('#action').addEventListener('contextmenu',e=>{e.preventDefault();document.querySelector('#action-result').textContent='right-clicked'});
     </script>`);
 });
 try {
@@ -50,6 +53,7 @@ try {
   await tool('browser_select', { deviceId: firefox[0].deviceId });
   const capabilities=await tool('browser_capabilities');
   if(capabilities.platform!=='Firefox'||!capabilities.tools?.includes('file_upload'))throw Error('Firefox capability listing is missing upload support');
+  if(capabilities.advancedInputConfigured&&!capabilities.computerActions?.includes('right_click'))throw Error('Firefox advanced actions were not advertised');
   const tab = await tool('tabs_create'); tabId = tab.tabId;
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
@@ -61,6 +65,7 @@ try {
   if (String(shot.image || '').length < 1000) throw Error('Screenshot missing');
   await tool('form_input', { tabId, fields: [{ selector: '#first', value: 'alpha' }, { selector: '#second', value: 'beta' }] });
   if (!(await tool('get_page_text', { tabId })).includes('alpha|beta')) throw Error('Firefox form_input did not update both fields');
+  if(capabilities.advancedInputConfigured && (await tool('javascript',{tabId,code:'document.querySelector("#first").dataset.trusted',confirmed:true}))!=='true')throw Error('Firefox advanced input was not trusted');
   await tool('computer', { tabId, action: 'left_click', selector: '#first' });
   await tool('clear_field', { tabId, selector: '#first' });
   await tool('insert_text', { tabId, text: 'gamma' });
@@ -113,12 +118,18 @@ try {
   if(!(await tool('get_page_text',{tabId})).includes('hovered'))throw Error('Firefox hover failed');
   await tool('computer',{tabId,action:'key',selector:'#action',text:'Enter',confirmed:true});
   if(!(await tool('get_page_text',{tabId})).includes('clicked'))throw Error('Firefox confirmed Enter failed');
+  if(capabilities.advancedInputConfigured){
+    await tool('computer',{tabId,action:'double_click',selector:'#action'});
+    if(!(await tool('get_page_text',{tabId})).includes('dblclicked'))throw Error('Firefox double-click failed');
+    await tool('computer',{tabId,action:'right_click',selector:'#action'});
+    if(!(await tool('get_page_text',{tabId})).includes('right-clicked'))throw Error('Firefox right-click failed');
+  }
   await tool('computer',{tabId,action:'scroll_to',selector:'#first'});
   const before=(await tool('measure',{tabId,ref:'#first'})).box.y;
   const scrolled = await tool('computer', { tabId, action: 'scroll', direction: 'down', amount: 500 });
   const after=(await tool('measure',{tabId,ref:'#first'})).box.y;
-  if (scrolled.target !== 'page'||after>=before) throw Error('Firefox page did not move on scroll');
-  console.log('Firefox LIVE PASS: navigation, screenshot, form, typing, reusable selectors, file upload, measure, script, batch, scroll');
+  if (!(scrolled.target === 'page'||scrolled.advancedInput) || after>=before) throw Error(`Firefox page did not move on scroll: ${JSON.stringify({scrolled,before,after})}`);
+  console.log(`Firefox LIVE PASS (${capabilities.advancedInputConfigured?'advanced trusted input':'basic input'}): navigation, screenshot, form, typing, reusable selectors, file upload, measure, script, batch, smooth scroll`);
 } finally {
   if (tabId) await tool('tabs_close', { tabId }).catch(e => console.error('Could not close test tab:', e.message));
   if (server.listening) server.close();

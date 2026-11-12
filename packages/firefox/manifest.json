@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Saint in Firefox (Local)",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Saint tab control for local MCP agents",
   "permissions": ["tabs", "tabGroups", "activeTab", "storage", "cookies", "downloads", "sessions", "<all_urls>", "http://127.0.0.1/*"],
   "background": { "scripts": ["background.js"] },

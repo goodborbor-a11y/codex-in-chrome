@@ -8,6 +8,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { configDir, loadConfig, saveConfig, type Config } from './config.js';
 import { browserToolTimeoutMs } from './timeouts.js';
 import { schemas, computerActions } from '../../mcp-server/src/schemas.js';
+import { FirefoxBidi } from './firefox-bidi.js';
 
 type Packet = { id?: string; type: string; [key: string]: unknown };
 type Browser = { ws: WebSocket; deviceId: string; name: string; profile?: string; platform?: string; buildId?: string; capabilities?: { version: string; tools: string[]; computerActions: string[] }; lastSeen: number; busy: number };
@@ -28,6 +29,7 @@ export class Bridge {
   readonly pairCodes = new Map<string, WebSocket>();
   readonly recordings = new Map<string, { dir: string; next: number; fps: number; path: string; tabId: number }>();
   readonly macros = new Map<string, { name: string; calls: { name: string; input: Record<string, unknown>; delay: number }[]; last: number }>();
+  private bidiQueue: Promise<void> = Promise.resolve();
   readonly server = createServer((req, res) => void this.http(req, res));
   readonly wss = new WebSocketServer({ noServer: true });
   constructor() {
@@ -92,7 +94,10 @@ export class Bridge {
       const id=String(input.deviceId||this.selected.get(sessionId)||(this.browsers.size===1?[...this.browsers.keys()][0]:''));
       const browser=this.browsers.get(id);if(!browser)throw Error('select_a_connected_browser');
       if(browser.platform==='Firefox'&&!browser.capabilities)throw Error('firefox_capabilities_missing: reload Saint in Firefox');
-      return {deviceId:id,platform:browser.platform,buildId:browser.buildId,...(browser.capabilities||{version:browser.buildId,tools:Object.keys(schemas),computerActions})};
+      const advanced=browser.platform==='Firefox'&&!!loadConfig().firefoxBidiPort;
+      const capabilities=browser.capabilities||{version:browser.buildId,tools:Object.keys(schemas),computerActions};
+      const actions=advanced?[...new Set([...capabilities.computerActions,'right_click','middle_click','double_click','triple_click','left_click_drag'])]:capabilities.computerActions;
+      return {deviceId:id,platform:browser.platform,buildId:browser.buildId,...capabilities,computerActions:actions,advancedInputConfigured:advanced};
     }
     if (name === 'browser_select') { const id = String(input.deviceId || ''); if (!this.browsers.has(id)) throw new Error('browser_disconnected'); this.selected.set(sessionId, id); return { selected: id }; }
     if (name === 'browser_switch') {
@@ -102,6 +107,20 @@ export class Bridge {
     const id = this.selected.get(sessionId) || (this.browsers.size === 1 ? [...this.browsers.keys()][0] : undefined);
     if (!id) throw new Error(`Select a browser first: ${JSON.stringify(this.list())}`);
     const b = this.browsers.get(id); if (!b || b.ws.readyState !== WebSocket.OPEN) throw new Error('browser_disconnected');
+    const bidiPort=b.platform==='Firefox'?loadConfig().firefoxBidiPort:undefined;
+    if(bidiPort&&input._bidiSkip!==true&&(
+      name==='computer'&&['left_click','right_click','middle_click','double_click','triple_click','hover','mouse_move','left_click_drag','scroll','type','key'].includes(String(input.action))||
+      name==='insert_text'||name==='clear_field'||name==='form_input')){
+      const recordKey=`${sessionId}:${input.tabId}`;
+      if(this.recordings.has(recordKey))await this.frame(sessionId,recordKey);
+      const result=name==='form_input'?await this.firefoxBidiForm(sessionId,bidiPort,input):
+        name==='clear_field'?await this.firefoxBidiClear(sessionId,bidiPort,input):
+        await this.firefoxBidiComputer(sessionId,bidiPort,name==='insert_text'?{...input,action:'type'}:input);
+      mkdirSync(configDir,{recursive:true});appendFileSync(join(configDir,'activity.jsonl'),JSON.stringify(redact({timestamp:new Date().toISOString(),sessionId,browser:id,tool:name,input}))+'\n');
+      const macro=this.macros.get(sessionId);if(macro){const now=Date.now();macro.calls.push({name,input:redact(input) as Record<string,unknown>,delay:now-macro.last});macro.last=now}
+      if(this.recordings.has(recordKey))await this.frame(sessionId,recordKey);
+      return result;
+    }
     if (name === 'macro_record') {
       const action = String(input.action || '');
       if (action === 'start') { const macroName = String(input.name || `macro-${Date.now()}`); this.macros.set(sessionId, { name: macroName, calls: [], last: Date.now() }); return { recording: macroName }; }
@@ -177,6 +196,59 @@ export class Bridge {
       return { path: target };
     }
     return result;
+  }
+  private async withFirefoxBidi<T>(port:number,work:(bidi:FirefoxBidi)=>Promise<T>):Promise<T>{
+    const previous=this.bidiQueue;
+    let release!:()=>void;
+    this.bidiQueue=new Promise<void>(resolve=>{release=resolve});
+    await previous;
+    let bidi:FirefoxBidi|undefined;
+    try{bidi=await FirefoxBidi.connect(port);return await work(bidi)}
+    finally{try{await bidi?.close()}finally{release()}}
+  }
+  private async firefoxBidiComputer(sessionId:string,port:number,input:Record<string,unknown>):Promise<unknown>{
+    const action=String(input.action||'');
+    if(action==='key'&&/(^|\+)enter$/i.test(String(input.text))&&input.confirmed!==true)throw Error('confirmation_required');
+    const point=await this.tool(sessionId,'bidi_target',{tabId:input.tabId,action,selector:input.selector,ref:input.ref,coordinate:input.coordinate}) as {x:number;y:number;dpr:number};
+    return this.withFirefoxBidi(port,async bidi=>{
+      const context=await bidi.contextForTab(Number(input.tabId));
+      if(['left_click','right_click','middle_click','double_click','triple_click','hover','mouse_move'].includes(action))await bidi.pointer(context,point,action);
+      else if(action==='left_click_drag'){
+        const start=input.start as [number,number],end=input.end as [number,number];
+        if(!start||!end)throw Error('drag_coordinates_required');
+        await bidi.pointer(context,{x:start[0]/point.dpr,y:start[1]/point.dpr},action,{x:end[0]/point.dpr,y:end[1]/point.dpr});
+      }else if(action==='scroll')await bidi.scroll(context,point,String(input.direction||'down'),Number(input.amount||400));
+      else if(action==='key'){
+        if(input.selector||input.ref)await bidi.pointer(context,point,'left_click');
+        for(let i=0;i<Math.min(100,Number(input.repeat||1));i++)await bidi.key(context,String(input.text||''));
+      }
+      else if(action==='type'){
+        if(input.selector||input.ref)await bidi.pointer(context,point,'left_click');
+        await bidi.type(context,String(input.text||''));
+      }
+      return{ok:true,action,advancedInput:true};
+    });
+  }
+  private async firefoxBidiClear(sessionId:string,port:number,input:Record<string,unknown>):Promise<unknown>{
+    const point=await this.tool(sessionId,'bidi_target',{tabId:input.tabId,action:'type',selector:input.selector,ref:input.ref}) as {x:number;y:number};
+    return this.withFirefoxBidi(port,async bidi=>{const context=await bidi.contextForTab(Number(input.tabId));if(input.selector||input.ref)await bidi.pointer(context,point,'left_click');await bidi.key(context,'ctrl+a');await bidi.key(context,'backspace');return{ok:true,advancedInput:true}});
+  }
+  private async firefoxBidiForm(sessionId:string,port:number,input:Record<string,unknown>):Promise<unknown>{
+    const tabId=Number(input.tabId),results:unknown[]=[];
+    return this.withFirefoxBidi(port,async bidi=>{
+      let context:string|undefined;
+      for(const field of (input.fields||[]) as {selector?:string;ref?:string;value:unknown}[]){
+        const selector=field.selector||field.ref;if(!selector)throw Error('field_selector_required');
+        const target=await this.tool(sessionId,'get_element',{tabId,selector}) as {tag:string;type?:string};
+        if(target.tag==='textarea'||target.tag==='input'&&!['checkbox','radio','file','hidden','date','color'].includes(String(target.type))){
+          const point=await this.tool(sessionId,'bidi_target',{tabId,selector,action:'type'}) as {x:number;y:number};
+          context ||= await bidi.contextForTab(tabId);
+          await bidi.pointer(context,point,'left_click');await bidi.key(context,'ctrl+a');await bidi.type(context,String(field.value));
+          results.push(await this.tool(sessionId,'get_element',{tabId,selector}));
+        }else results.push(await this.tool(sessionId,'form_input',{tabId,fields:[field],confirmed:input.confirmed,_bidiSkip:true}));
+      }
+      return results;
+    });
   }
   private async frame(sessionId: string, key: string): Promise<void> {
     const rec = this.recordings.get(key); if (!rec) throw new Error('recording_not_started');

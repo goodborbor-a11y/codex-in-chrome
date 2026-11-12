@@ -1,5 +1,5 @@
 {
-  "version": "0.3.0",
+  "version": "0.4.0",
   "tools": [
     "browsers_list", "browser_select", "browser_capabilities", "browser_status", "browser_resume",
     "extension_reload", "permissions_status", "permissions_set", "tabs_list_all", "tabs_context",

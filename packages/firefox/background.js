@@ -45,7 +45,7 @@ function domAction(input){
   }
   if(input.action==='focus'){e.focus();return{ok:true,focused:document.activeElement===e}}
   if(input.action==='blur'){e.blur();return{ok:true,focused:document.activeElement===e}}
-  if(input.action==='scroll_into_view'){e.scrollIntoView({block:'center',inline:'nearest'});return{ok:true}}
+  if(input.action==='scroll_into_view'){e.scrollIntoView({behavior:'smooth',block:'center',inline:'nearest'});return{ok:true}}
   if(input.action==='left_click'){
     e.click();
     const focus=e.matches('input,textarea,select,[contenteditable]')?e:e.control||null;
@@ -56,7 +56,7 @@ function domAction(input){
     const amount=Number(input.amount||400),direction=input.direction||'down';
     const dx=direction==='left'?-amount:direction==='right'?amount:0,dy=direction==='up'?-amount:direction==='down'?amount:0;
     const target=e.scrollHeight>e.clientHeight||e.scrollWidth>e.clientWidth?e:window;
-    target.scrollBy(dx,dy);return{ok:true,action:'scroll',tag:e.tagName,target:target===window?'page':'element'};
+    target.scrollBy({left:dx,top:dy,behavior:'smooth'});return{ok:true,action:'scroll',tag:e.tagName,target:target===window?'page':'element'};
   }
   if(input.action==='hover'||input.action==='mouse_move'){
     const r=e.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;
@@ -119,22 +119,31 @@ function domAction(input){
   return{ok:true,tag:e.tagName,typed:text.length,focused:document.activeElement===e};
 }
 async function edit(t,input){return script(t,`(${domAction.toString()})(${JSON.stringify(input)})`)}
+async function pointFor(t,input,mark=false){
+  const selector=JSON.stringify(input.selector||input.ref||''),xy=JSON.stringify(input.coordinate||null);
+  const marker=mark?`document.documentElement.setAttribute('data-saint-tab-id',${JSON.stringify(String(t.id))});`:'';
+  return script(t,`(()=>{${marker}const at=${xy},sel=${selector},scroll=${JSON.stringify(input.action==='scroll')};const e=at?document.elementFromPoint(at[0]/devicePixelRatio,at[1]/devicePixelRatio):sel?document.querySelector(sel):scroll?document.elementFromPoint(innerWidth/2,innerHeight/2):document.activeElement;if(!e)throw Error('element_not_found');if(${JSON.stringify(['type','key'].includes(input.action))}){const details=[e.getAttribute('type'),e.getAttribute('name'),e.id,e.getAttribute('autocomplete')].join(' ');if(/password|card.?number|\\bcc-?\\b|\\bcvv\\b|\\bcvc\\b|\\bssn\\b/i.test(details))throw Error('sensitive_field_blocked');if(e.matches('input[type=file],input[type=hidden],input[type=checkbox],input[type=radio]'))throw Error('not_editable')}const r=e.getBoundingClientRect();return{x:at?at[0]/devicePixelRatio:scroll&&!sel?innerWidth/2:r.left+r.width/2,y:at?at[1]/devicePixelRatio:scroll&&!sel?innerHeight/2:r.top+r.height/2,dpr:devicePixelRatio}})()`);
+}
 async function computer(t,input){
   if(input.action==='screenshot')return run('screenshot',input);
   if(input.action==='wait'){await sleep(Math.min(9000,1000*Number(input.seconds||1)));return{ok:true}}
   if(!['left_click','type','scroll','key','hover','mouse_move','scroll_to'].includes(input.action))throw Error('Firefox action not yet supported: '+input.action);
-  if(input.action==='scroll_to')return edit(t,{action:'scroll_into_view',selector:input.selector||input.ref});
-  const sel=JSON.stringify(input.selector||'');
-  const xy=JSON.stringify(input.coordinate||null);
-  const target=`(${sel}?document.querySelector(${sel}):(${xy}?document.elementFromPoint(${xy}[0]/devicePixelRatio,${xy}[1]/devicePixelRatio):document.activeElement))`;
-  const point=await script(t,`(()=>{let e=${target};if(!e)throw Error('element_not_found');let r=e.getBoundingClientRect();return{x:r.left+r.width/2,y:r.top+r.height/2}})()`);
+  if(input.action==='scroll_to'){const result=await edit(t,{action:'scroll_into_view',selector:input.selector||input.ref});await sleep(450);return result}
+  const point=await pointFor(t,input);
   await overlay(t,'overlay_move',{x:point.x,y:point.y,action:input.action==='type'?'typing':input.action==='scroll'?'scrolling':'moving'});
   await sleep(190);
   if(input.action==='left_click')await overlay(t,'overlay_click',{x:point.x,y:point.y});
-  return edit(t,input);
+  const result=await edit(t,input);if(input.action==='scroll')await sleep(450);return result;
 }
 async function run(name,input){if(name==='browser_status')return{connected:S.connected,paired:!!S.device,paused:S.paused};if(name==='browser_resume'){if(input.confirmed!==true)throw Error('confirmation_required');S.paused=false;return{paused:false}}if(name==='extension_reload'){setTimeout(()=>browser.runtime.reload(),500);return{reloading:true}}if(S.paused)throw Error('browser_paused');
 if(name==='computer')return computer(await tab(input),input);
+if(name==='bidi_target'){
+  const t=await tab(input);if(!t.active)throw Error('activate_tab_before_bidi_action');
+  const point=await pointFor(t,input,true);
+  await overlay(t,'overlay_move',{x:point.x,y:point.y,action:input.action==='type'?'typing':input.action==='scroll'?'scrolling':'moving'});
+  if(['left_click','double_click','triple_click','right_click','middle_click'].includes(input.action))await overlay(t,'overlay_click',{x:point.x,y:point.y});
+  return point;
+}
 if(name==='batch'){
   const results=[],started=Date.now();
   for(const item of (input.actions||[]).slice(0,50)){
@@ -211,7 +220,7 @@ if(name==='highlight'){
   const t=await tab(input),selector=input.selector||input.ref;
   return script(t,`(()=>{const e=document.querySelector(${JSON.stringify(selector)});if(!e)throw Error('element_not_found');e.style.outline='3px solid #00f7f6';e.style.boxShadow='0 0 12px #f708f788';return{ok:true,selector:${JSON.stringify(selector)}}})()`);
 }
-if(['get_element','focus','blur','scroll_into_view'].includes(name))return edit(await tab(input),{action:name==='get_element'?'inspect':name,selector:input.selector||input.ref});
+if(['get_element','focus','blur','scroll_into_view'].includes(name)){const result=await edit(await tab(input),{action:name==='get_element'?'inspect':name,selector:input.selector||input.ref});if(name==='scroll_into_view')await sleep(450);return result}
 if(['select_option','check','uncheck'].includes(name))return edit(await tab(input),{action:'replace',selector:input.selector||input.ref,text:name==='check'?'true':name==='uncheck'?'false':input.value});
 if(name==='wait_for'){
   const deadline=Date.now()+Math.min(30000,Number(input.timeoutMs||10000));
@@ -226,14 +235,14 @@ if(name==='wait_for'){
 }
 if(name==='scroll_page'){
   const t=await tab(input),to=input.to,percent=Math.max(0,Math.min(100,Number(input.percent||0)));
-  return script(t,`(()=>{const y=${JSON.stringify(to)}==='top'?0:${JSON.stringify(to)}==='bottom'?document.documentElement.scrollHeight:document.documentElement.scrollHeight*${percent}/100;window.scrollTo(0,y);return{ok:true,y:window.scrollY}})()`);
+  const result=await script(t,`(()=>{const y=${JSON.stringify(to)}==='top'?0:${JSON.stringify(to)}==='bottom'?document.documentElement.scrollHeight:document.documentElement.scrollHeight*${percent}/100;window.scrollTo({top:y,behavior:'smooth'});return{ok:true,targetY:y}})()`);await sleep(450);return result;
 }
 if(name==='scroll_until'){
   const t=await tab(input),max=Math.min(30,Number(input.maxScrolls||10));
   for(let i=0;i<max;i++){
     if(input.selector&&await script(t,`!!document.querySelector(${JSON.stringify(input.selector)})`))return{found:true,scrolls:i};
     if(input.text&&await script(t,`document.body?.innerText?.includes(${JSON.stringify(input.text)})||false`))return{found:true,scrolls:i};
-    await script(t,'window.scrollBy(0,600);true');await sleep(200);
+    await script(t,'window.scrollBy({top:600,behavior:"smooth"});true');await sleep(500);
   }
   throw Error('scroll_target_not_found');
 }

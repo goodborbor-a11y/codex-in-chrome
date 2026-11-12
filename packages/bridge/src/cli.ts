@@ -6,8 +6,9 @@ import { homedir, platform } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Bridge } from './server.js';
-import { loadConfig } from './config.js';
+import { loadConfig, saveConfig } from './config.js';
 import { rpcTimeoutMs } from './timeouts.js';
+import { FirefoxBidi } from './firefox-bidi.js';
 
 const [, , command = 'help', ...args] = process.argv;
 const root = resolve(fileURLToPath(import.meta.url), '../../../..');
@@ -28,6 +29,8 @@ async function main(): Promise<void> {
     return; }
   if (command === 'pair') { if (!args[0]) throw new Error('Usage: saint-in-browsers pair ABC123 [name]'); console.log(JSON.stringify(await rpc('', { code: args[0], name: args.slice(1).join(' ') || 'Chrome' }, '/pair'), null, 2)); return; }
   if (command === 'browsers') { console.log(JSON.stringify(await rpc('browsers_list'), null, 2)); return; }
+  if (command === 'bidi') { const port=Number(args[0]); if(args[0]==='off')delete config.firefoxBidiPort;else if(Number.isInteger(port)&&port>0&&port<65536)config.firefoxBidiPort=port;else throw Error('Usage: bidi PORT | bidi off');saveConfig(config);console.log(JSON.stringify({firefoxBidiPort:config.firefoxBidiPort||null}));return; }
+  if (command === 'bidi-install') { const port=Number(args[0]||config.firefoxBidiPort);if(!Number.isInteger(port)||port<1||port>65535)throw Error('Configure a Firefox BiDi port first: bidi PORT');const bidi=await FirefoxBidi.connect(port);try{const result=await bidi.call('webExtension.install',{extensionData:{type:'path',path:join(root,'packages','firefox')}});console.log(JSON.stringify(result));}finally{await bidi.close()}return; }
   if (command === 'status') { console.log(JSON.stringify(await rpc('browser_status'), null, 2)); return; }
   if (command === 'resume') { console.log(JSON.stringify(await rpc('browser_resume', { confirmed: true }), null, 2)); return; }
   if (command === 'reload') { console.log(JSON.stringify(await rpc('extension_reload'), null, 2)); return; }
@@ -88,6 +91,6 @@ async function main(): Promise<void> {
     } finally { if (tabId) await rpc('tabs_close', { tabId }).catch(() => {}); prompt.close(); server.closeAllConnections(); await new Promise<void>(done => server.close(() => done())); }
     return;
   }
-  console.log('saint-in-browsers: install | doctor | pair CODE [name] | browsers | status | resume | reload | serve | tool NAME JSON | demo');
+  console.log('saint-in-browsers: install | doctor | pair CODE [name] | browsers | bidi PORT|off | bidi-install [PORT] | status | resume | reload | serve | tool NAME JSON | demo');
 }
 main().catch(e => { console.error((e as Error).message); process.exitCode = 1; });

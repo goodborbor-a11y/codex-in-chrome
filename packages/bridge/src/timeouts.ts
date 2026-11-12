@@ -1,5 +1,7 @@
 export function browserToolTimeoutMs(name: string, input: Record<string, unknown>): number {
   if (name === 'batch') return 25_000;
+  if(name==='form_input')return Math.min(180_000,Math.max(15_000,((input.fields as unknown[]|undefined)?.length||0)*4000+10_000));
+  if(name==='insert_text')return Math.min(180_000,Math.max(12_000,String(input.text||'').length*250+8_000));
   if(name==='wait_for')return Math.min(33_000,Math.max(10_000,Number(input.timeoutMs||10_000)+3_000));
   if(name==='download_wait')return Math.min(123_000,Math.max(10_000,Number(input.timeoutMs||10_000)+3_000));
   if (name !== 'computer') return 10_000;

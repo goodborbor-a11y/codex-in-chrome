@@ -3,7 +3,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 
 export type Device = { deviceId: string; name: string; token: string; profile?: string };
-export type Config = { port: number; apiToken: string; devices: Device[]; uploadRoots: string[]; downloadDir: string };
+export type Config = { port: number; apiToken: string; devices: Device[]; uploadRoots: string[]; downloadDir: string; firefoxBidiPort?: number };
 export const configDir = process.env.CODEX_CHROME_CONFIG_DIR || join(homedir(), '.codex-chrome');
 export const configPath = join(configDir, 'config.json');
 export function loadConfig(): Config {
