@@ -12,7 +12,7 @@
     "check": "tsc -b --pretty false",
     "test": "vitest run",
     "test:e2e": "tsx packages/extension/e2e.ts",
-    "test:mcp": "node packages/mcp-server/smoke.mjs",
+    "test:mcp": "node packages/mcp-server/smoke.mjs && node packages/firefox/smoke.mjs",
     "lint": "eslint .",
     "format": "prettier --write .",
     "bridge": "tsx packages/bridge/src/cli.ts serve",

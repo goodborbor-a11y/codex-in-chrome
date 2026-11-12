@@ -1,6 +1,10 @@
-# Codex in Chrome
+# Browser MCP for Chrome and Firefox
 
-An **unofficial, experimental** Chrome extension, local bridge, and MCP server that let a terminal coding agent work in a visible Chrome window. This community project is not affiliated with OpenAI, Anthropic, or Google. It is not production ready.
+An **unofficial, experimental** browser extension, local bridge, and MCP server that let terminal agents use Chrome or Firefox tabs. Any local agent with stdio MCP support can connect, including Codex, Claude Code, and Hermes Agent. This community project is not affiliated with OpenAI, Anthropic, Mozilla, or Google. It is not production ready.
+
+**Start here:** [Step-by-step setup for Chrome, Firefox, Codex, Claude Code, Hermes, and other MCP agents](docs/CONNECT.md).
+
+Chrome has the original full tool set. Firefox currently supports core tab, navigation, page reading, click/type, and screenshot actions. The extension acts inside the browser; it does not use desktop control.
 
 The extension draws a cyan to magenta cursor and page glow, pulses the cursor magenta on clicks, and sends browser actions through Chrome DevTools Protocol. The status pill fades near the pointer so page controls beneath it stay clickable. The extension does not move the operating system pointer. The bridge listens on loopback and connects the extension to terminal tools.
 
