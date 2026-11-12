@@ -13,3 +13,5 @@ This Firefox add-on connects to the existing Codex in Chrome loopback bridge. An
 Firefox removes temporary add-ons when it closes. Permanent installation requires Mozilla signing. The current build has tab listing, creation, activation, owned-tab closing, navigation, text/HTML reading, finding controls, basic click/type/scroll/key actions, and visible-tab screenshots. The Chrome build has additional CDP-dependent features that are not in this Firefox build. Password and card input are blocked. User tabs require `confirmed:true` before activation; only agent-created tabs can be closed.
 
 After updating the add-on files in a temporary install, click **Reload** on the add-on card in `about:debugging#/runtime/this-firefox`. The saved pairing normally reconnects. The Stop button pauses actions; use the popup's **Resume** button or the `browser_resume({confirmed:true})` MCP tool to continue.
+
+`computer.coordinate` uses screenshot pixel positions. The add-on converts them to Firefox page coordinates using the page's display scale; screenshot responses include the CSS viewport size and display scale for inspection.
