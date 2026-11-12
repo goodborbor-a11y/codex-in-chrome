@@ -47,7 +47,7 @@ Run one of these commands **from the checkout**; it prints paths for your machin
 | Hermes Agent | `node scripts/agent-config.mjs both hermes` | Merge the YAML entry into `~/.hermes/config.yaml` under `mcp_servers` |
 | Other MCP agent | `node scripts/agent-config.mjs both generic` | Add the printed stdio `command` and `args` in that agent's MCP settings |
 
-Use `chrome` or `firefox` instead of `both` only if you want separate MCP entries. **Restart the agent** after editing its configuration. Hermes can also run `/reload-mcp`. Hermes' [MCP configuration guide](https://hermes-agent.nousresearch.com/docs/user-guide/features/mcp/) documents its `mcp_servers` format. Each MCP server runs as a local stdio child process; it does not need a separate network MCP endpoint.
+Use `chrome` or `firefox` instead of `both` only if you want separate MCP entries. **Start a new agent process after editing its configuration.** For an already open Claude Code conversation, exit it and run `claude --continue` in the same directory. Inside Claude Code, `/mcp` should show `saint-in-browsers`; `claude mcp list` checks the user-level registration from a terminal. Hermes can also run `/reload-mcp`. Hermes' [MCP configuration guide](https://hermes-agent.nousresearch.com/docs/user-guide/features/mcp/) documents its `mcp_servers` format. Each MCP server runs as a local stdio child process; it does not need a separate network MCP endpoint.
 
 ## 5. Try it
 
@@ -56,3 +56,5 @@ Use the [copy-paste Saint prompt](PROMPT.md) in any connected agent, then give i
 For Firefox, you can also run `corepack pnpm test:firefox-live` from the checkout. It creates a test tab, checks navigation, page text, and screenshot, then closes that tab.
 
 If the agent reports bridge offline, start `corepack pnpm bridge`. If it reports no paired browser, reopen the add-on and pair its current code. If a site is denied, enable it in the add-on panel or popup. Firefox's temporary add-on must be loaded again after every restart. Firefox's current tool set is smaller than Chrome's; see [Firefox limitations](../packages/firefox/README.md).
+
+If Claude says it has **Claude in Chrome** but cannot see `saint-in-browsers`, check `/mcp` in that Claude session. The built-in Claude in Chrome integration is separate from Saint and does not connect Firefox. If Saint is absent, verify `claude mcp list` reports it as Connected, then restart the local Claude Code session with `claude --continue`. A Claude session running in the cloud or another computer cannot read this PC's local MCP configuration or localhost bridge; connect Saint in that environment separately.
