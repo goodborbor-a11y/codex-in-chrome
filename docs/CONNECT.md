@@ -53,7 +53,7 @@ Use `chrome` or `firefox` instead of `both` only if you want separate MCP entrie
 
 Use the [copy-paste Saint prompt](PROMPT.md) in any connected agent, then give it your browser task. The agent should select the intended browser before tab actions.
 
-For Firefox, you can also run `corepack pnpm test:firefox-live` from the checkout. It creates a test tab, checks navigation, page text, and screenshot, then closes that tab.
+For Firefox, you can also run `corepack pnpm test:firefox-live` from the checkout. It creates a test tab, checks navigation, page text, screenshot, form filling, and typing, then closes that tab.
 
 If the agent reports bridge offline, start `corepack pnpm bridge`. If it reports no paired browser, reopen the add-on and pair its current code. If a site is denied, enable it in the add-on panel or popup. Firefox's temporary add-on must be loaded again after every restart. Firefox's current tool set is smaller than Chrome's; see [Firefox limitations](../packages/firefox/README.md).
 

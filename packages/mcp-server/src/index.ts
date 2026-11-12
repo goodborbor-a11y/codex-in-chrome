@@ -7,8 +7,17 @@ import { schemas } from './schemas.js';
 const config = loadConfig();
 const sessionId = crypto.randomUUID();
 const server = new McpServer({ name: 'saint-in-browsers', version: '0.2.0' });
+const firefoxTools = new Set([
+  'browsers_list', 'browser_select', 'browser_status', 'browser_resume',
+  'permissions_status', 'permissions_set', 'tabs_list_all', 'tabs_context', 'tabs_create',
+  'tabs_close', 'tabs_activate', 'navigate', 'screenshot', 'screenshot_to_file',
+  'read_page', 'get_page_text', 'get_html', 'find', 'computer', 'insert_text',
+  'clear_field', 'form_input', 'macro_record', 'macro_replay', 'gif_record'
+]);
 for (const [name, schema] of Object.entries(schemas)) {
-  server.tool(name, `Saint in Browsers ${name}. Use browsers_list and browser_select to choose Chrome or Firefox. Firefox supports core tab, navigation, page reading, basic computer, and screenshot tools; other tools require Chrome. Provide tabId for tab actions. Browser actions require pairing and site permission.`, schema.shape, async (input: Record<string, unknown>) => {
+  const firefox = firefoxTools.has(name) ? 'Firefox supported.' : 'Chrome only; Firefox has not implemented this tool.';
+  const limits = name === 'computer' ? ' Firefox computer supports left_click, type, scroll, key, wait, and screenshot actions only.' : '';
+  server.tool(name, `Saint in Browsers ${name}. ${firefox}${limits} Use browsers_list and browser_select to choose a connected browser. Provide tabId for tab actions. Browser actions require pairing and site permission.`, schema.shape, async (input: Record<string, unknown>) => {
     const timeout = rpcTimeoutMs(name, input);
     let response: Response;
     try {

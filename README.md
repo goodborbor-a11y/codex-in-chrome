@@ -6,7 +6,7 @@
 
 Once connected, copy the [short prompt for any MCP agent](docs/PROMPT.md).
 
-Chrome has the original full tool set. Firefox currently supports core tab, navigation, page reading, click/type, and screenshot actions. Both use a **Saint** tab group and an in-page frame, cursor, status pill, and Stop control. The extension acts inside the browser; it does not use desktop control. The single `saint-in-browsers` MCP entry can select either browser.
+Chrome has the original full tool set. Firefox currently supports core tab, navigation, page reading, click/type, form filling, and screenshot actions. The unified MCP exposes Chrome's full list of tools, but choosing Firefox does **not** make every Chrome tool available there; each tool description now says whether Firefox implements it. Both use a **Saint** tab group and an in-page frame, cursor, status pill, and Stop control. The extension acts inside the browser; it does not use desktop control. The single `saint-in-browsers` MCP entry can select either browser.
 
 The Chrome extension draws a cyan to magenta cursor and page glow and uses Chrome DevTools Protocol for input. Firefox uses WebExtension APIs and has a smaller tool set. Neither extension moves the operating system pointer. The bridge listens on loopback and connects both extensions to terminal tools.
 

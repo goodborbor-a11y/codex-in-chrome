@@ -10,7 +10,8 @@ let selected = false;
 const names = [
   'browsers_list', 'browser_select', 'browser_status', 'browser_resume', 'permissions_status',
   'tabs_list_all', 'tabs_context', 'tabs_create', 'tabs_close', 'tabs_activate',
-  'navigate', 'screenshot', 'read_page', 'get_page_text', 'get_html', 'find', 'computer'
+  'navigate', 'screenshot', 'read_page', 'get_page_text', 'get_html', 'find', 'computer',
+  'insert_text', 'clear_field', 'form_input'
 ] as const;
 for (const name of names) {
   server.tool(name, `Control Firefox tabs through the local bridge. Select the Firefox browser with browser_select when multiple browsers are connected. Website actions need Allow tab actions in the Firefox add-on popup.`, schemas[name].shape, async (input: Record<string, unknown>) => {
