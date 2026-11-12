@@ -51,4 +51,6 @@ For Chrome, replace `firefox` with `chrome`. The two agent entries can coexist. 
 
 Ask your agent: **“Use the Firefox browser tools to list tabs, open a new tab, visit https://example.com, and read the page.”** Say Chrome instead if that is what you paired. If more than one profile for that browser is connected, use `browsers_list` and `browser_select` first. The Firefox MCP automatically selects the sole connected Firefox profile.
 
+For Firefox, you can also run `corepack pnpm test:firefox-live` from the checkout. It creates a test tab, checks navigation, page text, and screenshot, then closes that tab.
+
 If the agent reports bridge offline, start `corepack pnpm bridge`. If it reports no paired browser, reopen the add-on and pair its current code. If a site is denied, enable it in the add-on panel or popup. Firefox's temporary add-on must be loaded again after every restart. Firefox's current tool set is smaller than Chrome's; see [Firefox limitations](../packages/firefox/README.md).
