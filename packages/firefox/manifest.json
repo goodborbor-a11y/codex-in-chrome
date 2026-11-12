@@ -1,9 +1,9 @@
 {
   "manifest_version": 2,
   "name": "Saint in Firefox (Local)",
-  "version": "0.1.0",
-  "description": "Firefox tab control through the local Codex bridge",
-  "permissions": ["tabs", "tabGroups", "activeTab", "storage", "<all_urls>", "http://127.0.0.1/*"],
+  "version": "0.3.0",
+  "description": "Saint tab control for local MCP agents",
+  "permissions": ["tabs", "tabGroups", "activeTab", "storage", "cookies", "downloads", "sessions", "<all_urls>", "http://127.0.0.1/*"],
   "background": { "scripts": ["background.js"] },
   "content_scripts": [{ "matches": ["http://*/*", "https://*/*"], "js": ["content.js"], "run_at": "document_start" }],
   "browser_action": { "default_title": "Saint in Firefox", "default_popup": "popup.html" },

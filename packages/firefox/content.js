@@ -1,4 +1,4 @@
-/* global browser, document, window */
+/* global browser, document, window, DataTransfer, File, atob, HTMLInputElement, Event */
 if (!globalThis.__codexFirefoxOverlay) {
   globalThis.__codexFirefoxOverlay = true;
   let host, root, pointer, ripple, label, trails = [], active = false;
@@ -39,6 +39,19 @@ if (!globalThis.__codexFirefoxOverlay) {
     if (m.type === 'overlay_move') { active=true; move(m.x,m.y); if(m.action&&label)label.textContent=`Saint is ${m.action}`; return Promise.resolve({ok:true}); }
     if (m.type === 'overlay_click') { active=true; move(m.x,m.y);pointer?.classList.add('pressed');ripple.style.left=`${m.x}px`;ripple.style.top=`${m.y}px`;ripple.classList.remove('go');void ripple.offsetWidth;ripple.classList.add('go');window.setTimeout(()=>pointer?.classList.remove('pressed'),260);return Promise.resolve({ok:true}); }
     if (m.type === 'overlay_detach') { active=false;host?.remove();host=null;pointer=null;ripple=null;return Promise.resolve({ok:true}); }
+    if (m.type === 'set_files') {
+      const e=document.querySelector(m.selector);
+      if(!(e instanceof HTMLInputElement)||e.type!=='file')throw Error('file_input_required');
+      const transfer=new DataTransfer();
+      for(const file of m.files){
+        const bytes=Uint8Array.from(atob(file.data),char=>char.charCodeAt(0));
+        transfer.items.add(new File([bytes],file.name,{type:file.type}));
+      }
+      e.files=transfer.files;
+      e.dispatchEvent(new Event('input',{bubbles:true}));
+      e.dispatchEvent(new Event('change',{bubbles:true}));
+      return Promise.resolve({uploaded:[...e.files].map(f=>({name:f.name,size:f.size,type:f.type}))});
+    }
     return undefined;
   });
   document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.altKey&&e.shiftKey&&e.key.toLowerCase()==='x')browser.runtime.sendMessage({type:'stop'})});

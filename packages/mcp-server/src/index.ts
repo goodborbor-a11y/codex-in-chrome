@@ -3,22 +3,16 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { loadConfig } from '../../bridge/src/config.js';
 import { rpcTimeoutMs } from '../../bridge/src/timeouts.js';
 import { schemas } from './schemas.js';
+import { readFileSync } from 'node:fs';
 
 const config = loadConfig();
 const sessionId = crypto.randomUUID();
 const server = new McpServer({ name: 'saint-in-browsers', version: '0.2.0' });
-const firefoxTools = new Set([
-  'browsers_list', 'browser_select', 'browser_status', 'browser_resume', 'extension_reload',
-  'permissions_status', 'permissions_set', 'tabs_list_all', 'tabs_context', 'tabs_create',
-  'tabs_close', 'tabs_activate', 'navigate', 'screenshot', 'screenshot_to_file',
-  'read_page', 'get_page_text', 'get_html', 'find', 'computer', 'insert_text',
-  'clear_field', 'form_input', 'get_element', 'wait_for', 'focus', 'blur',
-  'select_option', 'check', 'uncheck', 'scroll_into_view', 'scroll_page',
-  'macro_record', 'macro_replay', 'gif_record'
-]);
+const firefoxCapabilities = JSON.parse(readFileSync(new URL('../../firefox/capabilities.json', import.meta.url), 'utf8')) as { tools: string[]; computerActions: string[] };
+const firefoxTools = new Set(firefoxCapabilities.tools);
 for (const [name, schema] of Object.entries(schemas)) {
   const firefox = firefoxTools.has(name) ? 'Firefox supported.' : 'Chrome only; Firefox has not implemented this tool.';
-  const limits = name === 'computer' ? ' Firefox computer supports left_click, type, scroll, key, wait, and screenshot actions only.' : '';
+  const limits = name === 'computer' ? ` Firefox computer supports ${firefoxCapabilities.computerActions.join(', ')} actions.` : '';
   server.tool(name, `Saint in Browsers ${name}. ${firefox}${limits} Use browsers_list and browser_select to choose a connected browser. Provide tabId for tab actions. Browser actions require pairing and site permission.`, schema.shape, async (input: Record<string, unknown>) => {
     const timeout = rpcTimeoutMs(name, input);
     let response: Response;

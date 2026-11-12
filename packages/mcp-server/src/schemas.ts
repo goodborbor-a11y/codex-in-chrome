@@ -9,6 +9,7 @@ const plain = (fields: z.ZodRawShape = {}) => z.object(fields).strict();
 const text = z.string();
 const bool = z.boolean();
 const num = z.number();
+export const computerActions = ['left_click','right_click','middle_click','double_click','triple_click','hover','mouse_move','left_click_drag','scroll','scroll_to','type','key','wait','screenshot'] as const;
 
 export const schemas = {
   extension_reload: plain(),
@@ -19,6 +20,7 @@ export const schemas = {
   permissions_status: plain(),
   permissions_set: plain({ allSites: bool, confirmed: bool }),
   browsers_list: plain(),
+  browser_capabilities: plain({ deviceId: ref.optional() }),
   browser_select: plain({ deviceId: ref }),
   browser_switch: plain(),
   tabs_context: plain({ createIfEmpty: bool.optional() }),
@@ -48,7 +50,7 @@ export const schemas = {
   wait_for: tab({ selector: text.optional(), text: text.optional(), ref: ref.optional(), url_pattern: text.optional(), network_idle: bool.optional(), timeoutMs: num.int().positive().optional() }),
   highlight: tab({ ...target, label: text.optional() }),
   measure: tab({ ref }),
-  computer: tab({ action: z.enum(['left_click','right_click','middle_click','double_click','triple_click','hover','mouse_move','left_click_drag','scroll','scroll_to','type','key','wait','screenshot']), ...target, coordinate: coordinate.optional(), start: coordinate.optional(), end: coordinate.optional(), text: text.optional(), direction: z.enum(['up','down','left','right']).optional(), amount: num.optional(), seconds: num.optional(), delayMs: num.optional(), humanize: bool.optional(), repeat: num.int().positive().optional(), confirmed: bool.optional(), include_cursor: bool.optional() }),
+  computer: tab({ action: z.enum(computerActions), ...target, coordinate: coordinate.optional(), start: coordinate.optional(), end: coordinate.optional(), text: text.optional(), direction: z.enum(['up','down','left','right']).optional(), amount: num.optional(), seconds: num.optional(), delayMs: num.optional(), humanize: bool.optional(), repeat: num.int().positive().optional(), confirmed: bool.optional(), include_cursor: bool.optional() }),
   insert_text: tab({ text }),
   clear_field: tab(target),
   form_input: tab({ fields: z.array(z.object({ ref:ref.optional(), selector:text.optional(), value:z.union([text,num,bool]) })), confirmed:bool.optional() }),

@@ -1,0 +1,16 @@
+{
+  "version": "0.3.0",
+  "tools": [
+    "browsers_list", "browser_select", "browser_capabilities", "browser_status", "browser_resume",
+    "extension_reload", "permissions_status", "permissions_set", "tabs_list_all", "tabs_context",
+    "tabs_create", "tabs_close", "tabs_activate", "window_new", "window_resize",
+    "navigate", "screenshot", "screenshot_to_file", "read_page", "get_page_text",
+    "get_html", "find", "get_element", "measure", "highlight", "wait_for", "computer",
+    "insert_text", "clear_field", "form_input", "focus", "blur", "select_option", "check",
+    "uncheck", "scroll_into_view", "scroll_page", "scroll_until", "file_upload", "upload_image",
+    "javascript", "batch", "storage_read", "cookies_set", "cookies_clear",
+    "downloads_list", "download_wait", "download_url", "sessions_list", "sessions_restore",
+    "macro_record", "macro_replay", "gif_record"
+  ],
+  "computerActions": ["left_click", "type", "scroll", "scroll_to", "key", "wait", "screenshot", "hover", "mouse_move"]
+}

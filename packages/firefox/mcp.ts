@@ -2,20 +2,16 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { loadConfig } from '../bridge/src/config.js';
 import { schemas } from '../mcp-server/src/schemas.js';
+import { readFileSync } from 'node:fs';
 
 const config = loadConfig();
 const sessionId = crypto.randomUUID();
 const server = new McpServer({ name: 'codex-in-firefox', version: '0.1.0' });
 let selected = false;
-const names = [
-  'browsers_list', 'browser_select', 'browser_status', 'browser_resume', 'extension_reload', 'permissions_status',
-  'tabs_list_all', 'tabs_context', 'tabs_create', 'tabs_close', 'tabs_activate',
-  'navigate', 'screenshot', 'read_page', 'get_page_text', 'get_html', 'find', 'computer',
-  'insert_text', 'clear_field', 'form_input', 'get_element', 'wait_for', 'focus', 'blur',
-  'select_option', 'check', 'uncheck', 'scroll_into_view', 'scroll_page'
-] as const;
-for (const name of names) {
-  server.tool(name, `Control Firefox tabs through the local bridge. Select the Firefox browser with browser_select when multiple browsers are connected. Website actions need Allow tab actions in the Firefox add-on popup.`, schemas[name].shape, async (input: Record<string, unknown>) => {
+const capabilities=JSON.parse(readFileSync(new URL('./capabilities.json',import.meta.url),'utf8')) as {tools:string[]};
+for (const name of capabilities.tools) {
+  const schema=schemas[name as keyof typeof schemas];if(!schema)throw Error(`Unknown Firefox tool: ${name}`);
+  server.tool(name, `Control Firefox tabs through the local bridge. Select the Firefox browser with browser_select when multiple browsers are connected. Website actions need Allow tab actions in the Firefox add-on popup.`, schema.shape, async (input: Record<string, unknown>) => {
     try {
       const rpc = async (method: string, args: Record<string, unknown>) => {
         const response = await fetch(`http://127.0.0.1:${config.port}/rpc`, {

@@ -1,15 +1,16 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { isAbsolute, relative, join } from 'node:path';
+import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { basename, extname, isAbsolute, relative, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { WebSocketServer, WebSocket } from 'ws';
 import { configDir, loadConfig, saveConfig, type Config } from './config.js';
 import { browserToolTimeoutMs } from './timeouts.js';
+import { schemas, computerActions } from '../../mcp-server/src/schemas.js';
 
 type Packet = { id?: string; type: string; [key: string]: unknown };
-type Browser = { ws: WebSocket; deviceId: string; name: string; profile?: string; platform?: string; buildId?: string; lastSeen: number; busy: number };
+type Browser = { ws: WebSocket; deviceId: string; name: string; profile?: string; platform?: string; buildId?: string; capabilities?: { version: string; tools: string[]; computerActions: string[] }; lastSeen: number; busy: number };
 type Pending = { resolve: (value: unknown) => void; reject: (reason: Error) => void; timer: NodeJS.Timeout; deviceId: string };
 const MAX_BODY = 5_000_000;
 const execFileAsync = promisify(execFile);
@@ -50,7 +51,9 @@ export class Bridge {
       if (msg.type === 'hello') {
         const device = this.config.devices.find(d => d.deviceId === msg.deviceId && d.token === msg.token);
         if (device) {
-          browser = { ws, deviceId: device.deviceId, name: device.name, profile: device.profile, platform: String(msg.platform || ''), buildId: String(msg.buildId || ''), lastSeen: Date.now(), busy: 0 };
+          const candidate=msg.capabilities as Record<string,unknown> | undefined;
+          const capabilities=candidate&&typeof candidate.version==='string'&&Array.isArray(candidate.tools)&&candidate.tools.length<=200&&candidate.tools.every(x=>typeof x==='string')&&Array.isArray(candidate.computerActions)&&candidate.computerActions.length<=50&&candidate.computerActions.every(x=>typeof x==='string') ? candidate as Browser['capabilities'] : undefined;
+          browser = { ws, deviceId: device.deviceId, name: device.name, profile: device.profile, platform: String(msg.platform || ''), buildId: String(msg.buildId || ''), capabilities, lastSeen: Date.now(), busy: 0 };
           this.browsers.get(device.deviceId)?.ws.close();
           this.browsers.set(device.deviceId, browser);
           ws.send(JSON.stringify({ type: 'ready', deviceId: device.deviceId }));
@@ -82,9 +85,15 @@ export class Bridge {
     ws.send(JSON.stringify({ type: 'paired', deviceId, token, name })); this.pairCodes.delete(code.toUpperCase());
     return { deviceId, name };
   }
-  list(): unknown[] { return [...this.browsers.values()].map(b => ({ deviceId: b.deviceId, name: b.name, platform: b.platform, buildId: b.buildId, profile: b.profile, onThisComputer: true, inUse: b.busy > 0, lastSeen: b.lastSeen })); }
+  list(): unknown[] { return [...this.browsers.values()].map(b => ({ deviceId: b.deviceId, name: b.name, platform: b.platform, buildId: b.buildId, capabilityVersion: b.capabilities?.version, toolCount: b.capabilities?.tools.length, profile: b.profile, onThisComputer: true, inUse: b.busy > 0, lastSeen: b.lastSeen })); }
   async tool(sessionId: string, name: string, input: Record<string, unknown>): Promise<unknown> {
     if (name === 'browsers_list') return this.list();
+    if (name === 'browser_capabilities') {
+      const id=String(input.deviceId||this.selected.get(sessionId)||(this.browsers.size===1?[...this.browsers.keys()][0]:''));
+      const browser=this.browsers.get(id);if(!browser)throw Error('select_a_connected_browser');
+      if(browser.platform==='Firefox'&&!browser.capabilities)throw Error('firefox_capabilities_missing: reload Saint in Firefox');
+      return {deviceId:id,platform:browser.platform,buildId:browser.buildId,...(browser.capabilities||{version:browser.buildId,tools:Object.keys(schemas),computerActions})};
+    }
     if (name === 'browser_select') { const id = String(input.deviceId || ''); if (!this.browsers.has(id)) throw new Error('browser_disconnected'); this.selected.set(sessionId, id); return { selected: id }; }
     if (name === 'browser_switch') {
       for (const b of this.browsers.values()) b.ws.send(JSON.stringify({ type: 'select_prompt', sessionId }));
@@ -130,11 +139,22 @@ export class Bridge {
       const target = String(input.path); if (!target) throw new Error('path_required');
       mkdirSync(join(target, '..'), { recursive: true }); writeFileSync(target, Buffer.from(shot.image, 'base64')); return { path: target };
     }
+    let dispatchInput = input;
     if (name === 'file_upload' || name === 'upload_image' || name === 'file_drop') {
+      if(input.confirmed!==true)throw Error('confirmation_required');
       const paths = Array.isArray(input.paths) ? input.paths : input.path ? [input.path] : [];
+      if(!paths.length)throw Error('upload_path_required');
+      const checked:string[]=[];
       for (const path of paths) {
         const target = realpathSync(String(path));
         if (!this.config.uploadRoots.some(root => { const rel = relative(realpathSync(root), target); return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel)); })) throw new Error('upload_path_not_allowed');
+        checked.push(target);
+      }
+      if(b.platform==='Firefox'&&(name==='file_upload'||name==='upload_image')){
+        let total=0;
+        const mime:Record<string,string>={'.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp','.gif':'image/gif','.pdf':'application/pdf','.txt':'text/plain','.csv':'text/csv'};
+        const files=checked.map(path=>{const size=statSync(path).size;total+=size;if(size>16_000_000||total>50_000_000)throw Error('firefox_upload_too_large');return{name:basename(path),type:mime[extname(path).toLowerCase()]||'application/octet-stream',data:readFileSync(path).toString('base64')};});
+        dispatchInput={...input,filesData:files};
       }
     }
     if (this.recordings.has(recordKey) && !['screenshot','gif_record'].includes(name)) await this.frame(sessionId, recordKey);
@@ -143,7 +163,7 @@ export class Bridge {
     const result = await new Promise<unknown>((done, fail) => {
       const timer = setTimeout(() => { this.pending.delete(requestId); b.busy--; fail(new Error(`browser_action_timed_out: ${name === 'computer' ? String(input.action || name) : name} after ${Math.ceil(duration / 1000)}s`)); }, duration);
       this.pending.set(requestId, { resolve: done, reject: fail, timer, deviceId: id }); b.busy++;
-      b.ws.send(JSON.stringify({ type: 'tool', id: requestId, name, input }));
+      b.ws.send(JSON.stringify({ type: 'tool', id: requestId, name, input:dispatchInput }));
     });
     mkdirSync(configDir, { recursive: true });
     appendFileSync(join(configDir, 'activity.jsonl'), JSON.stringify(redact({ timestamp: new Date().toISOString(), sessionId, browser: id, tool: name, input })) + '\n');

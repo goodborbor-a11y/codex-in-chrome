@@ -60,6 +60,6 @@ Use `chrome` or `firefox` instead of `both` if you installed only one browser. T
 
 ## 5. Verify and update
 
-Run `corepack pnpm test:mcp` to check the MCP server. With Firefox open and paired, `corepack pnpm test:firefox-live` checks navigation, screenshots, form filling, and typing in a temporary local test tab.
+Run `corepack pnpm test:mcp` to check the MCP server. With Firefox open and paired, `corepack pnpm test:firefox-live` checks navigation, screenshots, form filling, typing, local file upload, downloads, and other browser controls in a temporary local test tab. In your agent, call `browser_capabilities` after selecting a browser to see its current supported tools.
 
 For a Git checkout, get newer code with `git pull`, `corepack pnpm install`, and `corepack pnpm build`. In Chrome, reload the Saint add-on at `chrome://extensions`; in Firefox, click **Reload** on its card in `about:debugging`. Restart your agent if MCP tool descriptions changed. For a ZIP install, download the latest ZIP again and replace the source in the **same folder** before rebuilding, so the saved MCP paths remain valid.
