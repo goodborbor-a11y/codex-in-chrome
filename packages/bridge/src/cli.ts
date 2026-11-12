@@ -20,16 +20,16 @@ async function rpc(name: string, input: Record<string, unknown> = {}, path = '/r
   return body.result;
 }
 async function main(): Promise<void> {
-  if (command === 'serve') { try { const response=await fetch(`http://127.0.0.1:${config.port}/health`,{signal:AbortSignal.timeout(800)}); if(response.ok&&(await response.json() as {ok?:boolean}).ok){console.log('Codex Chrome bridge already running');return;} } catch { /* start the bridge */ }
-    const bridge = new Bridge(); const port = await bridge.listen(); console.log(`Codex Chrome bridge listening on 127.0.0.1:${port}`); setInterval(() => { for (const b of bridge.browsers.values()) { if (Date.now() - b.lastSeen > 20_000) b.ws.close(); else b.ws.send(JSON.stringify({ type: 'heartbeat' })); } }, 5_000);
+  if (command === 'serve') { try { const response=await fetch(`http://127.0.0.1:${config.port}/health`,{signal:AbortSignal.timeout(800)}); if(response.ok&&(await response.json() as {ok?:boolean}).ok){console.log('Saint in Browsers bridge already running');return;} } catch { /* start the bridge */ }
+    const bridge = new Bridge(); const port = await bridge.listen(); console.log(`Saint in Browsers bridge listening on 127.0.0.1:${port}`); setInterval(() => { for (const b of bridge.browsers.values()) { if (Date.now() - b.lastSeen > 20_000) b.ws.close(); else b.ws.send(JSON.stringify({ type: 'heartbeat' })); } }, 5_000);
     const dist=join(root,'packages','extension','dist'); if(existsSync(dist)) { let timer:NodeJS.Timeout|undefined; watch(dist,{recursive:true},()=>{ if(timer) clearTimeout(timer); timer=setTimeout(()=>{ for(const b of bridge.browsers.values()) { const session=`watch-${b.deviceId}`; bridge.selected.set(session,b.deviceId); void bridge.tool(session,'extension_reload',{}).catch(()=>{}); } },5000); }); }
     return; }
-  if (command === 'pair') { if (!args[0]) throw new Error('Usage: codex-chrome pair ABC123 [name]'); console.log(JSON.stringify(await rpc('', { code: args[0], name: args.slice(1).join(' ') || 'Chrome' }, '/pair'), null, 2)); return; }
+  if (command === 'pair') { if (!args[0]) throw new Error('Usage: saint-in-browsers pair ABC123 [name]'); console.log(JSON.stringify(await rpc('', { code: args[0], name: args.slice(1).join(' ') || 'Chrome' }, '/pair'), null, 2)); return; }
   if (command === 'browsers') { console.log(JSON.stringify(await rpc('browsers_list'), null, 2)); return; }
   if (command === 'status') { console.log(JSON.stringify(await rpc('browser_status'), null, 2)); return; }
   if (command === 'resume') { console.log(JSON.stringify(await rpc('browser_resume', { confirmed: true }), null, 2)); return; }
   if (command === 'reload') { console.log(JSON.stringify(await rpc('extension_reload'), null, 2)); return; }
-  if (command === 'tool') { if (!args[0]) throw new Error('Usage: codex-chrome tool <name> <json>'); console.log(JSON.stringify(await rpc(args[0], args[1] ? JSON.parse(args[1]) as Record<string, unknown> : {}), null, 2)); return; }
+  if (command === 'tool') { if (!args[0]) throw new Error('Usage: saint-in-browsers tool <name> <json>'); console.log(JSON.stringify(await rpc(args[0], args[1] ? JSON.parse(args[1]) as Record<string, unknown> : {}), null, 2)); return; }
   if (command === 'doctor') {
     const chromePaths = platform() === 'win32' ? [join(process.env.PROGRAMFILES || '', 'Google/Chrome/Application/chrome.exe'), join(process.env['PROGRAMFILES(X86)'] || '', 'Google/Chrome/Application/chrome.exe'), join(process.env.LOCALAPPDATA || '', 'Google/Chrome/Application/chrome.exe')] : platform() === 'darwin' ? ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'] : ['/usr/bin/google-chrome', '/usr/bin/chromium'];
     let health: unknown; try { health = await (await fetch(`http://127.0.0.1:${config.port}/health`)).json(); } catch { health = 'bridge offline'; }
@@ -43,8 +43,8 @@ async function main(): Promise<void> {
   if (command === 'install') {
     const dir = join(homedir(), '.codex'); mkdirSync(dir, { recursive: true });
     const file = join(dir, 'config.toml'); const old = existsSync(file) ? readFileSync(file, 'utf8') : '';
-    if (!old.includes('[mcp_servers.chrome]')) {
-      const entry = `\n[mcp_servers.chrome]\ncommand = "node"\nargs = [${JSON.stringify(join(root, 'node_modules', 'tsx', 'dist', 'cli.mjs'))}, ${JSON.stringify(join(root, 'packages', 'mcp-server', 'src', 'index.ts'))}]\n`;
+    if (!old.includes('[mcp_servers.saint-in-browsers]')) {
+      const entry = `\n[mcp_servers.saint-in-browsers]\ncommand = "node"\nargs = [${JSON.stringify(join(root, 'node_modules', 'tsx', 'dist', 'cli.mjs'))}, ${JSON.stringify(join(root, 'packages', 'mcp-server', 'src', 'index.ts'))}]\n`;
       writeFileSync(file, old + entry);
     }
     console.log(`Extension: ${join(root, 'packages', 'extension', 'dist')}\nCodex config: ${file}\nBridge: corepack pnpm bridge`); return;
@@ -72,7 +72,7 @@ async function main(): Promise<void> {
       await rpc('computer', { tabId, action: 'left_click', ref: ref('Submit'), confirmed: true }); console.log('Clicked Submit');
       const submitted = String(await rpc('get_page_text', { tabId, mode: 'all' }));
       if (!submitted.includes('Hello Test User')) throw new Error(`Demo submit failed: ${submitted.slice(0, 160)}`);
-      const uploadPath = join(homedir(), '.codex-chrome', 'demo-upload.txt'); mkdirSync(join(homedir(), '.codex-chrome'), { recursive: true }); writeFileSync(uploadPath, 'Codex Chrome demo file');
+      const uploadPath = join(homedir(), '.codex-chrome', 'demo-upload.txt'); mkdirSync(join(homedir(), '.codex-chrome'), { recursive: true }); writeFileSync(uploadPath, 'Saint browser demo file');
       await rpc('file_upload', { tabId, ref: ref('Upload'), paths: [uploadPath], confirmed: true }); console.log('Uploaded file');
       await rpc('clipboard_write', { text: 'Two cursors, one browser' });
       await rpc('computer', { tabId, action: 'left_click', ref: ref('Paste here') }); await rpc('paste', { tabId }); console.log('Pasted text');
@@ -86,6 +86,6 @@ async function main(): Promise<void> {
     } finally { if (tabId) await rpc('tabs_close', { tabId }).catch(() => {}); prompt.close(); server.closeAllConnections(); await new Promise<void>(done => server.close(() => done())); }
     return;
   }
-  console.log('codex-chrome: install | doctor | pair CODE [name] | browsers | status | resume | reload | serve | tool NAME JSON | demo');
+  console.log('saint-in-browsers: install | doctor | pair CODE [name] | browsers | status | resume | reload | serve | tool NAME JSON | demo');
 }
 main().catch(e => { console.error((e as Error).message); process.exitCode = 1; });

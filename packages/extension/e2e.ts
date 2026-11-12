@@ -20,7 +20,7 @@ async function rpc(name: string, input: Record<string, unknown> = {}): Promise<a
 let tabId: number | undefined;
 try {
   const browsers = await rpc('browsers_list') as { deviceId: string; name: string }[];
-  if (!browsers.length) throw Error('No new Codex in Chrome extension is paired with the bridge. Load packages/extension/dist in your current Chrome, then pair its code.');
+  if (!browsers.length) throw Error('No Saint in Chrome extension is paired with the bridge. Load packages/extension/dist in your current Chrome, then pair its code.');
   const selected = process.env.CODEX_CHROME_DEVICE_ID || (browsers.length === 1 ? browsers[0]?.deviceId : undefined);
   if (!selected) throw Error(`Several browsers are connected; set CODEX_CHROME_DEVICE_ID to one of: ${JSON.stringify(browsers)}`);
   await rpc('browser_select', { deviceId: selected });

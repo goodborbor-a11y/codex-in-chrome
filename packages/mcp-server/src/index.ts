@@ -6,9 +6,9 @@ import { schemas } from './schemas.js';
 
 const config = loadConfig();
 const sessionId = crypto.randomUUID();
-const server = new McpServer({ name: 'codex-in-chrome', version: '0.1.0' });
+const server = new McpServer({ name: 'saint-in-browsers', version: '0.2.0' });
 for (const [name, schema] of Object.entries(schemas)) {
-  server.tool(name, `Codex Chrome ${name}. Provide tabId for tab actions. Browser actions require pairing and the selected site permission setting.`, schema.shape, async (input: Record<string, unknown>) => {
+  server.tool(name, `Saint in Browsers ${name}. Use browsers_list and browser_select to choose Chrome or Firefox. Firefox supports core tab, navigation, page reading, basic computer, and screenshot tools; other tools require Chrome. Provide tabId for tab actions. Browser actions require pairing and site permission.`, schema.shape, async (input: Record<string, unknown>) => {
     const timeout = rpcTimeoutMs(name, input);
     let response: Response;
     try {

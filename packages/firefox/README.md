@@ -1,12 +1,12 @@
-# Codex in Firefox (local prototype)
+# Saint in Firefox (local prototype)
 
-This Firefox add-on connects to the existing Codex in Chrome loopback bridge. Any stdio MCP agent can use its `firefox` tools. It controls Firefox tabs through WebExtension APIs and draws a cyan/magenta frame, animated page cursor, status pill, and Stop button **inside the tab**. It does not touch the Windows desktop.
+This Firefox add-on connects to the Saint in Browsers loopback bridge. Any stdio MCP agent can use its tools. It creates a **Saint** tab group and draws a cyan/magenta frame, animated page cursor, status pill, and Stop button **inside the tab**. It does not touch the Windows desktop.
 
 ## Load and pair
 
 1. Keep the existing bridge running (`corepack pnpm bridge` from the repository root, if it is not already running).
 2. In Firefox, open `about:debugging#/runtime/this-firefox`, choose **Load Temporary Add-on**, and select this folder's `manifest.json`.
-3. Open the **Codex in Firefox (Local)** toolbar popup. It shows a six-character pairing code.
+3. Open the **Saint in Firefox (Local)** toolbar popup. It shows a six-character pairing code.
 4. In PowerShell, from the repository root, run `corepack pnpm exec tsx packages/bridge/src/cli.ts pair CODE Firefox` with that code.
 5. In the popup, enable **Allow tab actions on websites**. Restart Codex and Claude Code terminal sessions. The `firefox` MCP selects the paired Firefox automatically when there is one; use `browsers_list` and `browser_select` if you pair more than one Firefox profile.
 

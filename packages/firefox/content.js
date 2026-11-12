@@ -23,7 +23,7 @@ if (!globalThis.__codexFirefoxOverlay) {
     host = document.createElement('div');
     host.style.cssText = 'all:initial;position:fixed;inset:0;pointer-events:none;z-index:2147483647';
     root = host.attachShadow({ mode: 'closed' });
-    root.innerHTML = `<div class="frame"></div><div class="trail two"></div><div class="trail"></div><div class="pointer"><svg viewBox="0 0 40 48" aria-hidden="true"><defs><linearGradient id="fill" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#00f7f6"/><stop offset=".5" stop-color="#7c80f7"/><stop offset="1" stop-color="#f708f7"/></linearGradient></defs><path d="M5 4v31l8-7 7 15 8-4-7-15h12z" fill="url(#fill)" stroke="#eafcff" stroke-width="3.4" stroke-linejoin="round"/></svg></div><div class="ripple"></div><div class="pill"><i class="dot"></i><span class="label">Codex is working</span><button type="button" aria-label="Stop browser control">Stop</button></div>`;
+    root.innerHTML = `<div class="frame"></div><div class="trail two"></div><div class="trail"></div><div class="pointer"><svg viewBox="0 0 40 48" aria-hidden="true"><defs><linearGradient id="fill" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#00f7f6"/><stop offset=".5" stop-color="#7c80f7"/><stop offset="1" stop-color="#f708f7"/></linearGradient></defs><path d="M5 4v31l8-7 7 15 8-4-7-15h12z" fill="url(#fill)" stroke="#eafcff" stroke-width="3.4" stroke-linejoin="round"/></svg></div><div class="ripple"></div><div class="pill"><i class="dot"></i><span class="label">Saint is working</span><button type="button" aria-label="Stop browser control">Stop</button></div>`;
     const css = document.createElement('style'); css.textContent = style; root.prepend(css);
     pointer = root.querySelector('.pointer'); ripple = root.querySelector('.ripple'); label = root.querySelector('.label'); trails = [...root.querySelectorAll('.trail')];
     root.querySelector('button').onclick = () => browser.runtime.sendMessage({ type: 'stop' });
@@ -35,8 +35,8 @@ if (!globalThis.__codexFirefoxOverlay) {
     trails.forEach((e,i)=>{e.style.transform=`translate3d(${x-(i?7:12)}px,${y-(i?7:12)}px,0)`;e.style.opacity=i?'.42':'.24'});
   }
   browser.runtime.onMessage.addListener(m => {
-    if (m.type === 'overlay_attach') { active=true; ensure(); if(m.action&&label)label.textContent=`Codex is ${m.action}`; return Promise.resolve({ok:true}); }
-    if (m.type === 'overlay_move') { active=true; move(m.x,m.y); if(m.action&&label)label.textContent=`Codex is ${m.action}`; return Promise.resolve({ok:true}); }
+    if (m.type === 'overlay_attach') { active=true; ensure(); if(m.action&&label)label.textContent=`Saint is ${m.action}`; return Promise.resolve({ok:true}); }
+    if (m.type === 'overlay_move') { active=true; move(m.x,m.y); if(m.action&&label)label.textContent=`Saint is ${m.action}`; return Promise.resolve({ok:true}); }
     if (m.type === 'overlay_click') { active=true; move(m.x,m.y);pointer?.classList.add('pressed');ripple.style.left=`${m.x}px`;ripple.style.top=`${m.y}px`;ripple.classList.remove('go');void ripple.offsetWidth;ripple.classList.add('go');window.setTimeout(()=>pointer?.classList.remove('pressed'),260);return Promise.resolve({ok:true}); }
     if (m.type === 'overlay_detach') { active=false;host?.remove();host=null;pointer=null;ripple=null;return Promise.resolve({ok:true}); }
     return undefined;

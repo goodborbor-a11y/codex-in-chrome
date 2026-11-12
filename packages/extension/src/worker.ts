@@ -10,7 +10,7 @@ function code(): string { const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; cons
 function origin(url?: string): string { try { const parsed=new URL(url || ''); return ['http:','https:'].includes(parsed.protocol) ? parsed.origin : ''; } catch { return ''; } }
 function entry(name: string, detail = ''): void { state.log.push(`${new Date().toLocaleTimeString()} ${name} ${detail}`); if (state.log.length > 100) state.log.shift(); }
 async function save(): Promise<void> { await chrome.storage.local.set({ device: state.device, allowed: [...state.allowed], allowAll: state.allowAll, credentials: [...state.credentials], port: state.port }); }
-async function init(): Promise<void> { const saved = await chrome.storage.local.get(['device', 'allowed', 'allowAll', 'credentials', 'port', 'ownedTabIds']); const tabs=await chrome.tabs.query({}); const groups=await chrome.tabGroups.query({title:'Codex'}); const valid=new Set(groups.filter(g=>g.color==='blue').map(g=>g.id)); const existing=new Set(tabs.filter(t=>t.id!=null&&valid.has(t.groupId)).map(t=>t.id!)); state.owned=new Set(((saved.ownedTabIds as number[])||[]).filter(id=>existing.has(id))); state.device = (saved.device as Device) || null; state.paired = !!state.device; state.allowed = new Set(((saved.allowed as string[]) || []).filter(x=>origin(x)===x)); state.allowAll = saved.allowAll === true; state.credentials = new Set(((saved.credentials as string[]) || []).filter(x=>origin(x)===x)); state.port = Number(saved.port) || 17345; state.code = code(); chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }); void connect(); }
+async function init(): Promise<void> { const saved = await chrome.storage.local.get(['device', 'allowed', 'allowAll', 'credentials', 'port', 'ownedTabIds']); const tabs=await chrome.tabs.query({}); const groups=await chrome.tabGroups.query({}); const valid=new Set(groups.filter(g=>g.color==='blue'&&(g.title==='Codex'||g.title==='Saint')).map(g=>g.id)); for(const g of groups) if(g.title==='Codex'&&g.color==='blue') await chrome.tabGroups.update(g.id,{title:'Saint'}); const existing=new Set(tabs.filter(t=>t.id!=null&&valid.has(t.groupId)).map(t=>t.id!)); state.owned=new Set(((saved.ownedTabIds as number[])||[]).filter(id=>existing.has(id))); state.device = (saved.device as Device) || null; state.paired = !!state.device; state.allowed = new Set(((saved.allowed as string[]) || []).filter(x=>origin(x)===x)); state.allowAll = saved.allowAll === true; state.credentials = new Set(((saved.credentials as string[]) || []).filter(x=>origin(x)===x)); state.port = Number(saved.port) || 17345; state.code = code(); chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }); void connect(); }
 async function saveOwned(): Promise<void> { await chrome.storage.local.set({ownedTabIds:[...state.owned]}); }
 async function discover(): Promise<number | undefined> {
   const probe = async (port: number): Promise<number | undefined> => {
@@ -39,7 +39,7 @@ async function connect(): Promise<void> {
   ws.onerror = () => ws.close();
 }
 async function incoming(msg: BridgePacket): Promise<void> {
-  if (msg.type === 'ready') { const tabs=await chrome.tabs.query({}); const groups=await chrome.tabGroups.query({title:'Codex'}); for(const g of groups) if(g.color==='blue') state.groups.set(g.windowId,g.id); for(const t of tabs) if(t.id&&state.groups.get(t.windowId)===t.groupId) await attached(t.id).catch(()=>{}); return; }
+  if (msg.type === 'ready') { const tabs=await chrome.tabs.query({}); const groups=await chrome.tabGroups.query({title:'Saint'}); for(const g of groups) if(g.color==='blue') state.groups.set(g.windowId,g.id); for(const t of tabs) if(t.id&&state.groups.get(t.windowId)===t.groupId) await attached(t.id).catch(()=>{}); return; }
   if (msg.type === 'pair_waiting' || msg.type === 'pair_required') { if(state.device) { state.device=null; state.paired=false; await save(); } return; }
   if (msg.type === 'select_prompt') { state.selectSession = String(msg.sessionId || ''); await chrome.sidePanel.open({ windowId: (await chrome.windows.getCurrent()).id! }).catch(()=>{}); return; }
   if (msg.type === 'selected') { state.selectSession = ''; return; }
@@ -84,18 +84,18 @@ async function group(tabId: number): Promise<void> {
   let groupId = state.groups.get(windowId);
   if (groupId != null) { try { const existing = await chrome.tabGroups.get(groupId); if (existing.windowId !== windowId) groupId = undefined; } catch { groupId = undefined; } if (groupId == null) state.groups.delete(windowId); }
   if (groupId == null) {
-    const groups = await chrome.tabGroups.query({ windowId, title: 'Codex' });
+    const groups = await chrome.tabGroups.query({ windowId, title: 'Saint' });
     groupId = groups.find(g => g.color === 'blue')?.id;
   }
   if (groupId == null) groupId = await chrome.tabs.group({ tabIds: [tabId] });
   else await chrome.tabs.group({ groupId, tabIds: [tabId] });
-  state.groups.set(windowId, groupId); await chrome.tabGroups.update(groupId, { title: 'Codex', color: 'blue' });
+  state.groups.set(windowId, groupId); await chrome.tabGroups.update(groupId, { title: 'Saint', color: 'blue' });
   const grouped = await chrome.tabs.get(tabId); if (grouped.groupId !== groupId) throw Error('tab_group_not_persisted');
 }
 async function tabFor(input: Data, allowUnlisted = false): Promise<chrome.tabs.Tab> {
   if (!Number.isInteger(input.tabId)) throw Error('tabId_required');
   const tab = await chrome.tabs.get(input.tabId);
-  if (!allowUnlisted) { const valid = tab.groupId >= 0 ? await chrome.tabGroups.get(tab.groupId).catch(()=>null) : null; if(!valid||valid.windowId!==tab.windowId||valid.title!=='Codex'||valid.color!=='blue') throw Error('tab_not_in_codex_group'); state.groups.set(tab.windowId,valid.id); }
+  if (!allowUnlisted) { const valid = tab.groupId >= 0 ? await chrome.tabGroups.get(tab.groupId).catch(()=>null) : null; if(!valid||valid.windowId!==tab.windowId||valid.title!=='Saint'||valid.color!=='blue') throw Error('tab_not_in_saint_group'); state.groups.set(tab.windowId,valid.id); }
   return tab;
 }
 async function permitted(tab: chrome.tabs.Tab, name: string, input: Data): Promise<void> {
@@ -120,7 +120,7 @@ async function confirmTarget(tabId: number, input: Data): Promise<void> {
   if (/\b(submit|send|publish|purchase|buy|checkout|delete|remove|accept terms|agree to)\b/i.test(label)) throw Error(`confirmation_required: ${String(target.name || '').slice(0,80)}`);
 }
 async function offscreen(action: string, text?: string): Promise<any> {
-  if (!await chrome.offscreen.hasDocument()) await chrome.offscreen.createDocument({ url: 'offscreen.html', reasons: ['CLIPBOARD'], justification: 'Read and write the browser clipboard for explicit Codex Chrome tools' });
+  if (!await chrome.offscreen.hasDocument()) await chrome.offscreen.createDocument({ url: 'offscreen.html', reasons: ['CLIPBOARD'], justification: 'Read and write the browser clipboard for explicit Saint browser tools' });
   const response = await chrome.runtime.sendMessage({ target: 'offscreen', action, text });
   if (response?.error) throw Error(response.error); return response;
 }
@@ -207,13 +207,13 @@ async function run(name: string, input: Data): Promise<unknown> {
   if (name==='clipboard_write') return offscreen('write',String(input.text||''));
   if (name==='clipboard_read') return offscreen('read');
   if (name==='downloads_list') return (await chrome.downloads.search({})).filter(d=>state.downloadIds.has(d.id));
-  if (name==='download_url') { if(input.confirmed!==true) throw Error('confirmation_required'); const site=origin(String(input.url)); if(!site||!state.allowAll&&!state.allowed.has(site)&&!state.once.has(site)) throw Error('origin_not_allowed'); const base=String(input.filename||new URL(String(input.url)).pathname.split('/').pop()||'download').split(/[\\/]/).pop()||'download'; const filename=`Codex Chrome/${base.replace(/[:*?"<>|]/g,'_')}`; const downloadId=await chrome.downloads.download({url:String(input.url),filename,saveAs:false}); if(downloadId!=null) state.downloadIds.add(downloadId); return {downloadId}; }
+  if (name==='download_url') { if(input.confirmed!==true) throw Error('confirmation_required'); const site=origin(String(input.url)); if(!site||!state.allowAll&&!state.allowed.has(site)&&!state.once.has(site)) throw Error('origin_not_allowed'); const base=String(input.filename||new URL(String(input.url)).pathname.split('/').pop()||'download').split(/[\\/]/).pop()||'download'; const filename=`Saint/${base.replace(/[:*?"<>|]/g,'_')}`; const downloadId=await chrome.downloads.download({url:String(input.url),filename,saveAs:false}); if(downloadId!=null) state.downloadIds.add(downloadId); return {downloadId}; }
   if (name==='download_wait') { const deadline=Date.now()+Math.min(Number(input.timeoutMs||8000),9000); while(Date.now()<deadline) { const items=await chrome.downloads.search({orderBy:['-startTime'],limit:30}); const found=items.find(d=>state.downloadIds.has(d.id)&&d.state==='complete'&&(!input.filenameHint||d.filename.includes(input.filenameHint))); if(found) return {filename:found.filename,size:found.fileSize,url:found.url}; await wait(250); } throw Error('download_timeout'); }
   if (name === 'tabs_create') { const tab = await chrome.tabs.create({ url: 'about:blank', active: input.active !== false }); if (!tab.id) throw Error('tab_creation_failed'); state.owned.add(tab.id); await saveOwned(); try { await group(tab.id); await attached(tab.id); return { tabId:tab.id,groupId:(await chrome.tabs.get(tab.id)).groupId }; } catch(e) { await chrome.tabs.remove(tab.id).catch(()=>{}); state.owned.delete(tab.id); await saveOwned(); throw e; } }
   if (name === 'window_new') { const win = await chrome.windows.create({ url: 'about:blank', focused:false }); const tab=win?.tabs?.[0]; if(!tab?.id) throw Error('window_creation_failed'); state.owned.add(tab.id); await saveOwned(); try { await group(tab.id); return {windowId:win?.id,tabId:tab.id}; } catch(e) { await chrome.tabs.remove(tab.id).catch(()=>{}); state.owned.delete(tab.id); await saveOwned(); throw e; } }
   if (name === 'tabs_close') { const id=Number(input.tabId); if(!state.owned.has(id)) throw Error('cannot_close_user_tab'); await tabFor(input); await chrome.tabs.remove(id); state.owned.delete(id); await saveOwned(); return {closed:id}; }
   if (name === 'tabs_list_all') return (await chrome.tabs.query({})).filter(t=>!state.groups.has(t.windowId)||state.groups.get(t.windowId)!==t.groupId).map(t=>({tabId:t.id,title:t.title,url:t.url}));
-  if (name === 'tabs_context') { const all=await chrome.tabs.query({}); const valid=new Set((await chrome.tabGroups.query({title:'Codex'})).filter(g=>g.color==='blue').map(g=>g.id)); const tabs=all.filter(t=>valid.has(t.groupId)).map(t=>({tabId:t.id,title:t.title,url:t.url,active:t.active,attached:t.id!=null&&state.active.has(t.id),groupId:t.groupId})); if(!tabs.length&&input.createIfEmpty) return run('tabs_create',{}); return tabs; }
+  if (name === 'tabs_context') { const all=await chrome.tabs.query({}); const valid=new Set((await chrome.tabGroups.query({title:'Saint'})).filter(g=>g.color==='blue').map(g=>g.id)); const tabs=all.filter(t=>valid.has(t.groupId)).map(t=>({tabId:t.id,title:t.title,url:t.url,active:t.active,attached:t.id!=null&&state.active.has(t.id),groupId:t.groupId})); if(!tabs.length&&input.createIfEmpty) return run('tabs_create',{}); return tabs; }
   if (name === 'tabs_activate') { const t=await tabFor(input,true); if(state.groups.get(t.windowId)!==t.groupId&&input.confirmed!==true) throw Error('confirmation_required_for_user_tab'); await group(t.id!); await chrome.tabs.update(t.id!,{active:true}); await attached(t.id!); return {tabId:t.id,groupId:state.groups.get(t.windowId)}; }
   const tab=await tabFor(input); const id=tab.id!;
   if (name === 'navigate') { const started=Date.now(); await attached(id); const previous=tab.url; const dest=String(input.url || ''); if(['back','forward','reload'].includes(dest)) await cdp(id,`Page.${dest==='back'?'navigateToHistoryEntry':dest==='forward'?'navigateToHistoryEntry':'reload'}`,dest==='reload'?{}:{entryId: (await cdp(id,'Page.getNavigationHistory')).entries[(await cdp(id,'Page.getNavigationHistory')).currentIndex+(dest==='back'?-1:1)]?.id}); else { const site=origin(dest); if(!site||!state.allowAll&&!state.allowed.has(site)&&!state.once.has(site)) throw Error(`origin_not_allowed: ${site}`); await cdp(id,'Page.navigate',{url:dest}); } let final=await chrome.tabs.get(id); const deadline=Date.now()+8000; while(final.status!=='complete'&&Date.now()<deadline){await wait(100);final=await chrome.tabs.get(id);} await ensureContent(id); await wait(Math.max(0,1100-(Date.now()-started))); return {url:final.url,status:state.mainStatus.get(id),redirected:dest!==final.url&&dest!==previous}; }

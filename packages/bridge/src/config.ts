@@ -14,7 +14,7 @@ export function loadConfig(): Config {
     apiToken: crypto.randomUUID(),
     devices: [],
     uploadRoots: [homedir()],
-    downloadDir: join(homedir(), 'Downloads', 'Codex Chrome')
+    downloadDir: join(homedir(), 'Downloads', 'Saint')
   };
   saveConfig(config);
   return config;

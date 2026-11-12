@@ -1,12 +1,12 @@
 {
   "manifest_version": 2,
-  "name": "Codex in Firefox (Local)",
+  "name": "Saint in Firefox (Local)",
   "version": "0.1.0",
   "description": "Firefox tab control through the local Codex bridge",
-  "permissions": ["tabs", "activeTab", "storage", "<all_urls>", "http://127.0.0.1/*"],
+  "permissions": ["tabs", "tabGroups", "activeTab", "storage", "<all_urls>", "http://127.0.0.1/*"],
   "background": { "scripts": ["background.js"] },
   "content_scripts": [{ "matches": ["http://*/*", "https://*/*"], "js": ["content.js"], "run_at": "document_start" }],
-  "browser_action": { "default_title": "Codex in Firefox", "default_popup": "popup.html" },
+  "browser_action": { "default_title": "Saint in Firefox", "default_popup": "popup.html" },
   "browser_specific_settings": { "gecko": { "id": "codex-firefox-local@manuel.local", "data_collection_permissions": { "required": ["browsingActivity", "websiteContent"] } } },
   "content_security_policy": "script-src 'self'; object-src 'self'; connect-src 'self' ws://127.0.0.1:* http://127.0.0.1:*"
 }

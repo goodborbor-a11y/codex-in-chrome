@@ -1,6 +1,6 @@
-# Connect a browser to an MCP agent
+# Connect Saint in Browsers to an MCP agent
 
-These steps work from a fresh Git checkout. Run the bridge and agent on the **same computer** as the browser. Chrome and Firefox use the same local bridge but have separate add-ons and MCP tool sets.
+These steps work from a fresh Git checkout. Run the bridge and agent on the **same computer** as the browser. Chrome and Firefox use the same local bridge, separate add-ons, and one `saint-in-browsers` MCP entry. Agent tabs appear in a **Saint** tab group in each browser.
 
 ## 1. Get the code
 
@@ -23,7 +23,7 @@ In a terminal from the checkout, run `corepack pnpm bridge` and keep it running.
 
 **Chrome:** Open `chrome://extensions`, enable **Developer mode**, click **Load unpacked**, and select `packages/extension/dist` from this checkout. Click the add-on icon to open its panel. Copy the six-character code. Allow the websites you want the agent to use in that panel.
 
-**Firefox:** Open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on**, and select `packages/firefox/manifest.json` from this checkout. Open the **Codex in Firefox (Local)** toolbar popup and copy its six-character code. Turn on **Allow tab actions on websites**. Firefox removes this unsigned temporary add-on on restart; load it again to use it. A permanent install needs Mozilla signing.
+**Firefox:** Open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on**, and select `packages/firefox/manifest.json` from this checkout. Open the **Saint in Firefox (Local)** toolbar popup and copy its six-character code. Turn on **Allow tab actions on websites**. Firefox removes this unsigned temporary add-on on restart; load it again to use it. A permanent install needs Mozilla signing.
 
 When Firefox add-on files change, click **Reload** on its card in `about:debugging`. Controlled tabs show a cyan/magenta page frame, animated cursor, and a Stop button. Stop pauses browser actions; use **Resume** in the toolbar popup to continue.
 
@@ -38,20 +38,20 @@ Use `"My Chrome"` instead when pairing Chrome. Repeat pairing for every browser 
 
 ## 4. Connect an agent
 
-Run one of these commands **from the checkout**; it prints paths for your machine. Use `firefox` or `chrome` as the first argument:
+Run one of these commands **from the checkout**; it prints paths for your machine. `both` gives the agent one Saint MCP server that can select Chrome or Firefox:
 
 | Agent | Command | What to do with output |
 | --- | --- | --- |
-| Codex | `node scripts/agent-config.mjs firefox codex` | Paste the TOML block into `~/.codex/config.toml` |
-| Claude Code | `node scripts/agent-config.mjs firefox claude` | Run the printed `claude mcp add` command |
-| Hermes Agent | `node scripts/agent-config.mjs firefox hermes` | Merge the YAML entry into `~/.hermes/config.yaml` under `mcp_servers` |
-| Other MCP agent | `node scripts/agent-config.mjs firefox generic` | Add the printed stdio `command` and `args` in that agent's MCP settings |
+| Codex | `node scripts/agent-config.mjs both codex` | Paste the TOML block into `~/.codex/config.toml` |
+| Claude Code | `node scripts/agent-config.mjs both claude` | Run the printed `claude mcp add` command |
+| Hermes Agent | `node scripts/agent-config.mjs both hermes` | Merge the YAML entry into `~/.hermes/config.yaml` under `mcp_servers` |
+| Other MCP agent | `node scripts/agent-config.mjs both generic` | Add the printed stdio `command` and `args` in that agent's MCP settings |
 
-For Chrome, replace `firefox` with `chrome`. The two agent entries can coexist. **Restart the agent** after editing its configuration. Hermes can also run `/reload-mcp`. Hermes' [MCP configuration guide](https://hermes-agent.nousresearch.com/docs/user-guide/features/mcp/) documents its `mcp_servers` format. Each MCP server runs as a local stdio child process; it does not need a separate network MCP endpoint.
+Use `chrome` or `firefox` instead of `both` only if you want separate MCP entries. **Restart the agent** after editing its configuration. Hermes can also run `/reload-mcp`. Hermes' [MCP configuration guide](https://hermes-agent.nousresearch.com/docs/user-guide/features/mcp/) documents its `mcp_servers` format. Each MCP server runs as a local stdio child process; it does not need a separate network MCP endpoint.
 
 ## 5. Try it
 
-Ask your agent: **“Use the Firefox browser tools to list tabs, open a new tab, visit https://example.com, and read the page.”** Say Chrome instead if that is what you paired. If more than one profile for that browser is connected, use `browsers_list` and `browser_select` first. The Firefox MCP automatically selects the sole connected Firefox profile.
+Use the [copy-paste Saint prompt](PROMPT.md) in any connected agent, then give it your browser task. The agent should select the intended browser before tab actions.
 
 For Firefox, you can also run `corepack pnpm test:firefox-live` from the checkout. It creates a test tab, checks navigation, page text, and screenshot, then closes that tab.
 

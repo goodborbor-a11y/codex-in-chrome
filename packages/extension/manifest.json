@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Codex in Chrome",
+  "name": "Saint in Chrome",
   "version": "0.1.0",
-  "description": "Local, permission-gated Chrome control for Codex",
+  "description": "Local, permission-gated Chrome control for Saint",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
@@ -15,7 +15,7 @@
   "content_scripts": [{ "matches": ["http://*/*", "https://*/*"], "js": ["content.js"], "run_at": "document_start", "all_frames": true }],
   "side_panel": { "default_path": "panel.html" },
   "action": {
-    "default_title": "Codex in Chrome",
+    "default_title": "Saint in Chrome",
     "default_icon": {
       "16": "icons/icon16.png",
       "24": "icons/icon24.png",

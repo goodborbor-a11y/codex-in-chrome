@@ -5,7 +5,7 @@ async function refresh(): Promise<void> {
   const s = await call('panel_state') as State;
   $('state').textContent = !s.connected ? 'Bridge offline' : s.paired ? 'Connected' : 'Pair this browser';
   $('code').textContent = s.connected && !s.paired ? s.code : '';
-  $('device').textContent = s.name ? `${s.name} · ${s.deviceId}` : 'Run codex-chrome pair CODE';
+  $('device').textContent = s.name ? `${s.name} · ${s.deviceId}` : 'Pair this browser using the setup guide';
   $('selectPrompt').hidden = !s.selectSession;
   $('site').textContent = `${s.origin || 'No web page selected'} ${s.allowed ? '✓ allowed' : '· permission needed'}`;
   ($('allowAll') as HTMLInputElement).checked = !!s.allowAll;

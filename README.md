@@ -1,38 +1,18 @@
-# Browser MCP for Chrome and Firefox
+# Saint in Browsers
 
-An **unofficial, experimental** browser extension, local bridge, and MCP server that let terminal agents use Chrome or Firefox tabs. Any local agent with stdio MCP support can connect, including Codex, Claude Code, and Hermes Agent. This community project is not affiliated with OpenAI, Anthropic, Mozilla, or Google. It is not production ready.
+**Saint in Browsers** is an unofficial, experimental browser extension, local bridge, and MCP server that lets terminal agents use Chrome or Firefox tabs. Any local agent with stdio MCP support can connect, including Codex, Claude Code, and Hermes Agent. This community project is not affiliated with OpenAI, Anthropic, Mozilla, or Google. It is not production ready.
 
 **Start here:** [Step-by-step setup for Chrome, Firefox, Codex, Claude Code, Hermes, and other MCP agents](docs/CONNECT.md).
 
-Chrome has the original full tool set. Firefox currently supports core tab, navigation, page reading, click/type, and screenshot actions, with the same in-page frame, cursor, status pill, and Stop control. The extension acts inside the browser; it does not use desktop control.
+Once connected, copy the [short prompt for any MCP agent](docs/PROMPT.md).
 
-The extension draws a cyan to magenta cursor and page glow, pulses the cursor magenta on clicks, and sends browser actions through Chrome DevTools Protocol. The status pill fades near the pointer so page controls beneath it stay clickable. The extension does not move the operating system pointer. The bridge listens on loopback and connects the extension to terminal tools.
+Chrome has the original full tool set. Firefox currently supports core tab, navigation, page reading, click/type, and screenshot actions. Both use a **Saint** tab group and an in-page frame, cursor, status pill, and Stop control. The extension acts inside the browser; it does not use desktop control. The single `saint-in-browsers` MCP entry can select either browser.
+
+The Chrome extension draws a cyan to magenta cursor and page glow and uses Chrome DevTools Protocol for input. Firefox uses WebExtension APIs and has a smaller tool set. Neither extension moves the operating system pointer. The bridge listens on loopback and connects both extensions to terminal tools.
 
 ## Quick start
 
-You need Chrome, Node.js, and Corepack. Development has been tested with Node 24 on Windows.
-
-```powershell
-corepack pnpm install
-corepack pnpm build
-corepack pnpm bridge
-```
-
-In Chrome, open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select this checkout's `packages/extension/dist` folder. Open the extension side panel and note its six-character pairing code. In a second terminal, run:
-
-```powershell
-corepack pnpm exec tsx packages/bridge/src/cli.ts pair ABC123 "My Chrome"
-corepack pnpm exec tsx packages/bridge/src/cli.ts install
-corepack pnpm exec tsx packages/bridge/src/cli.ts doctor
-```
-
-Replace `ABC123` with the code shown in your panel. `install` adds an MCP server entry with paths to this checkout in `~/.codex/config.toml`; restart Codex CLI afterward. Other MCP clients can launch `packages/mcp-server/src/index.ts` with `tsx` from this checkout.
-
-Claude Code can use the same stdio server. From this checkout in PowerShell, register a local MCP entry with `claude mcp add --scope local codex-in-chrome -- node "$((Get-Location).Path)/node_modules/tsx/dist/cli.mjs" "$((Get-Location).Path)/packages/mcp-server/src/index.ts"`, then check it with `claude mcp get codex-in-chrome`. The connection was smoke-tested with Claude Code 2.1.322; browser actions still need a paired Chrome profile and site approval.
-
-If browser control is paused, `corepack pnpm exec tsx packages/bridge/src/cli.ts status` shows the state and `corepack pnpm exec tsx packages/bridge/src/cli.ts resume` resumes it after you decide to continue. The MCP `browser_resume` tool requires `confirmed: true`. Ordinary clicks have a short deadline with a named timeout error; long typing actions get a longer deadline based on their length.
-
-The panel lets you approve a site before the agent acts there. To try the bundled local form demo, run `corepack pnpm exec tsx packages/bridge/src/cli.ts demo` and follow its site approval prompt. The demo opens and closes its own tab and saves a screenshot and GIF under your configured download directory. GIF recording requires `ffmpeg` on `PATH`.
+Follow the [connection guide](docs/CONNECT.md) to install the Chrome and Firefox add-ons, pair them with the local bridge, and register the single `saint-in-browsers` MCP entry in Codex, Claude Code, Hermes, or another MCP agent.
 
 ## Multiple Chrome profiles and updates
 
