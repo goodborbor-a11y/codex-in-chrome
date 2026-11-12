@@ -8,7 +8,7 @@ const sessionId = crypto.randomUUID();
 const server = new McpServer({ name: 'codex-in-firefox', version: '0.1.0' });
 let selected = false;
 const names = [
-  'browsers_list', 'browser_select', 'browser_status', 'permissions_status',
+  'browsers_list', 'browser_select', 'browser_status', 'browser_resume', 'permissions_status',
   'tabs_list_all', 'tabs_context', 'tabs_create', 'tabs_close', 'tabs_activate',
   'navigate', 'screenshot', 'read_page', 'get_page_text', 'get_html', 'find', 'computer'
 ] as const;

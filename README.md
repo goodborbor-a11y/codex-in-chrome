@@ -4,7 +4,7 @@ An **unofficial, experimental** browser extension, local bridge, and MCP server 
 
 **Start here:** [Step-by-step setup for Chrome, Firefox, Codex, Claude Code, Hermes, and other MCP agents](docs/CONNECT.md).
 
-Chrome has the original full tool set. Firefox currently supports core tab, navigation, page reading, click/type, and screenshot actions. The extension acts inside the browser; it does not use desktop control.
+Chrome has the original full tool set. Firefox currently supports core tab, navigation, page reading, click/type, and screenshot actions, with the same in-page frame, cursor, status pill, and Stop control. The extension acts inside the browser; it does not use desktop control.
 
 The extension draws a cyan to magenta cursor and page glow, pulses the cursor magenta on clicks, and sends browser actions through Chrome DevTools Protocol. The status pill fades near the pointer so page controls beneath it stay clickable. The extension does not move the operating system pointer. The bridge listens on loopback and connects the extension to terminal tools.
 

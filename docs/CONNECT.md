@@ -25,6 +25,8 @@ In a terminal from the checkout, run `corepack pnpm bridge` and keep it running.
 
 **Firefox:** Open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on**, and select `packages/firefox/manifest.json` from this checkout. Open the **Codex in Firefox (Local)** toolbar popup and copy its six-character code. Turn on **Allow tab actions on websites**. Firefox removes this unsigned temporary add-on on restart; load it again to use it. A permanent install needs Mozilla signing.
 
+When Firefox add-on files change, click **Reload** on its card in `about:debugging`. Controlled tabs show a cyan/magenta page frame, animated cursor, and a Stop button. Stop pauses browser actions; use **Resume** in the toolbar popup to continue.
+
 In a second terminal in the checkout, replace `ABC123` with the popup code and run:
 
 ```sh
